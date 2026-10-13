@@ -1,0 +1,18 @@
+@import './base.css';
+#app { min-height: 100vh; }
+.app-shell { min-height: 100vh; }
+.app-aside { background: #fff; border-right: 1px solid #e5e7eb; }
+.brand { height: 60px; display: flex; align-items: center; padding: 0 22px; font-size: 18px; font-weight: 700; color: #2563eb; }
+.app-header { display: flex; align-items: center; justify-content: space-between; background: #fff; border-bottom: 1px solid #e5e7eb; }
+.user-actions { display: flex; gap: 14px; align-items: center; }
+.app-main { padding: 28px; }
+.page-heading { display: flex; justify-content: space-between; margin-bottom: 22px; }
+.page-heading h1 { margin: 0 0 8px; font-size: 26px; }
+.metric-label { color: #909399; font-size: 14px; }
+.metric-value { margin-top: 10px; font-size: 24px; font-weight: 600; }
+.login-page { min-height: 100vh; display: grid; place-items: center; background: linear-gradient(135deg, #eff6ff, #f8fafc); padding: 20px; }
+.login-card { width: min(420px, 100%); }
+.login-card h1 { margin: 0 0 8px; }
+.full-width { width: 100%; }
+.state-page { min-height: 60vh; display: grid; place-items: center; }
+@media (max-width: 700px) { .app-aside { width: 170px !important; } .app-main { padding: 18px; } }

@@ -1,0 +1,3 @@
+package com.haucheng.erp.controller;
+import com.haucheng.erp.auth.RequirePermission; import com.haucheng.erp.common.ApiResponse; import com.haucheng.erp.service.RoleService; import com.haucheng.erp.vo.PermissionTreeView; import lombok.RequiredArgsConstructor; import org.springframework.web.bind.annotation.*; import java.util.List;
+@RestController @RequestMapping("/api/system/permissions") @RequiredArgsConstructor public class PermissionController { private final RoleService service; @GetMapping("/tree") @RequirePermission("system.permission.view") public ApiResponse<List<PermissionTreeView>> tree(){return ApiResponse.success(service.permissionTree());} }
