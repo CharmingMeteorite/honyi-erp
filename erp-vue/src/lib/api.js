@@ -17,6 +17,14 @@ export async function request(path, options = {}) {
 }
 function query(params) { const value = new URLSearchParams(); Object.entries(params).forEach(([key, item]) => { if (item !== undefined && item !== null && item !== '') value.set(key, item) }); return value.toString() }
 export const api = {
+  stocktakes: (params = {}) => request(`/api/inventory/stocktakes?${query(params)}`),
+  stocktake: (id) => request(`/api/inventory/stocktakes/${id}`),
+  createStocktake: (data) => request('/api/inventory/stocktakes', { method: 'POST', body: JSON.stringify(data) }),
+  updateStocktake: (id, data) => request(`/api/inventory/stocktakes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  stocktakeAction: (id, action, data) => request(`/api/inventory/stocktakes/${id}/${action}`, { method: 'POST', body: JSON.stringify(data) }),
+  stocktakeCount: (id, itemId, data) => request(`/api/inventory/stocktakes/${id}/items/${itemId}/count`, { method: 'PUT', body: JSON.stringify(data) }),
+  stocktakeOptions: (resource, params = {}) => request(`/api/inventory/stocktakes/options/${resource}?${query(params)}`),
+
   inventoryOrders: (kind, params = {}) => request(`/api/inventory/${kind}s?${query(params)}`),
   inventoryOrder: (kind, id) => request(`/api/inventory/${kind}s/${id}`),
   createInventoryOrder: (kind, data) => request(`/api/inventory/${kind}s`, { method: 'POST', body: JSON.stringify(data) }),

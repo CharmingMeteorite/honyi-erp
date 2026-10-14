@@ -79,6 +79,6 @@ public interface StockMapper {
             """ + SCOPE + "</where> ORDER BY issues.warehouse_id,issues.product_id</script>")
     List<StockConsistencyIssueView> selectConsistencyIssues(@Param("warehouseId") Long warehouseId, @Param("departmentIds") List<Long> departmentIds);
 
-    @Select("SELECT (SELECT COUNT(*) FROM inv_stocks WHERE product_id=#{productId}) + (SELECT COUNT(*) FROM inv_opening_balance_items WHERE product_id=#{productId}) + (SELECT COUNT(*) FROM inv_inbound_items WHERE product_id=#{productId}) + (SELECT COUNT(*) FROM inv_outbound_items WHERE product_id=#{productId}) + (SELECT COUNT(*) FROM apply_requisition_items WHERE product_id=#{productId})")
+    @Select("SELECT (SELECT COUNT(*) FROM inv_stocks WHERE product_id=#{productId}) + (SELECT COUNT(*) FROM inv_opening_balance_items WHERE product_id=#{productId}) + (SELECT COUNT(*) FROM inv_inbound_items WHERE product_id=#{productId}) + (SELECT COUNT(*) FROM inv_outbound_items WHERE product_id=#{productId}) + (SELECT COUNT(*) FROM apply_requisition_items WHERE product_id=#{productId}) + (SELECT COUNT(*) FROM inv_stocktake_items WHERE product_id=#{productId})")
     int countProductReferences(@Param("productId") Long productId);
 }

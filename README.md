@@ -1,6 +1,6 @@
 # ERP 内部物资管理系统
 
-公司内部物资、库存、设备及生命周期管理系统。当前备份中的源码大致覆盖 Phase 0～Phase 6：认证与权限、主数据、设备、仓库库存、入库/出库和领用申请/发放。根据当前备份未发现 Phase 7～10C 的完整实现；Phase 6 的历史最终验收曾受 MySQL 连接故障阻塞，本文不将未重新执行的测试或构建称为当前通过。
+公司内部物资、库存、设备及生命周期管理系统。当前源码覆盖 Phase 0～7：认证与权限、主数据、设备、仓库库存、入库/出库、领用申请/发放及库存盘点。Phase 7 在 `feature/phase7-stocktake` 分支开发；Phase 8～10C 尚未实现。Phase 0～6 的历史验证记录不能替代本次验证，当前结果见 [docs/phase7-verification.md](docs/phase7-verification.md)。
 
 ## 技术栈
 
@@ -89,4 +89,4 @@ docs/      编码规范、参考索引和数据库蓝图
 
 管理员通过 `ERP_SEED_ADMIN_USERNAME`、`ERP_SEED_ADMIN_PASSWORD`、`ERP_SEED_ADMIN_REAL_NAME` 和 `ERP_SEED_ADMIN_EMPLOYEE_NO` 初始化，密码使用 BCrypt，不会写入源码或日志。用户、部门、角色和权限变更会记录到 `sys_operation_log`；停用用户或修改密码/角色后，该用户已有 Token 会失效。
 
-完整接口以 `erp/src/main/java/com/haucheng/erp/controller/` 和前端路由为准；数据库版本以实际 Flyway history 为准，不能仅凭 Migration 文件名判断。后续 Phase 按需求逐步实现，当前备份未发现 Phase 7～10C 的完整源码、页面和测试。
+库存盘点使用 `/api/inventory/stocktakes` 和前端 `/inventory/stocktakes`，支持草稿、账面快照、实盘、结构化设备差异、确认调整和历史查询。设备异常中的账外、未登记、错产品、库外与状态异常须先人工核查；确认设备缺失时将原设备标记为 `MISSING` 并记录历史和库存流水。实现边界见 [docs/stocktake-management.md](docs/stocktake-management.md)。完整接口以 `erp/src/main/java/com/haucheng/erp/controller/` 和前端路由为准；数据库版本以实际 Flyway history 为准。当前 Phase 7 使用 V12 和修正盘点设备唯一键的 V13。

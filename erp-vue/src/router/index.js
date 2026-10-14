@@ -21,6 +21,7 @@ import StockLedgerView from '../views/inventory/StockLedgerView.vue'
 import OpeningBalanceView from '../views/inventory/OpeningBalanceView.vue'
 import InventoryOrderView from '../views/inventory/InventoryOrderView.vue'
 import RequisitionView from '../views/inventory/RequisitionView.vue'
+import StocktakeView from '../views/inventory/StocktakeView.vue'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -41,6 +42,7 @@ const router = createRouter({
       { path: 'inventory/inbounds', component: InventoryOrderView, props: { kind: 'inbound' }, meta: { permission: 'inventory.inbound.view' } },
       { path: 'inventory/outbounds', component: InventoryOrderView, props: { kind: 'outbound' }, meta: { permission: 'inventory.outbound.view' } },
       { path: 'apply/requisitions', component: RequisitionView, meta: { permission: 'apply.requisition.view' } },
+      { path: 'inventory/stocktakes', component: StocktakeView, meta: { permission: 'inventory.stocktake.view' } },
       { path: 'inventory/openings', component: OpeningBalanceView, meta: { permission: 'inventory.stock.opening' } },
       { path: 'assets/devices', component: DeviceView, meta: { permission: 'system.device.view' } },
     ] },

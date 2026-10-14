@@ -105,6 +105,8 @@ public interface AssetDeviceMapper {
     @Update("UPDATE asset_devices SET status='IN_USE',warehouse_id=NULL,department_id=#{departmentId},user_id=#{userId},custodian_id=#{userId},first_use_at=COALESCE(first_use_at,CURRENT_TIMESTAMP) WHERE id=#{id} AND warehouse_id=#{warehouseId} AND status='IN_STOCK'")
     int issueFromWarehouse(@Param("id") Long id, @Param("warehouseId") Long warehouseId,
                            @Param("userId") Long userId, @Param("departmentId") Long departmentId);
+    @Update("UPDATE asset_devices SET status='MISSING' WHERE id=#{id} AND warehouse_id=#{warehouseId} AND product_id=#{productId} AND status='IN_STOCK'")
+    int markStocktakeMissing(@Param("id") Long id, @Param("warehouseId") Long warehouseId, @Param("productId") Long productId);
     @Select("SELECT device_id FROM inv_order_device_claims WHERE device_id=#{id} FOR UPDATE")
     Long selectInventoryClaim(@Param("id") Long id);
     @Select("SELECT COUNT(*) FROM inv_order_device_claims WHERE device_id=#{id}")

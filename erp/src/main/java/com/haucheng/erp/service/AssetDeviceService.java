@@ -30,7 +30,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AssetDeviceService {
-    private static final Set<String> STATUSES = Set.of("IN_STOCK", "IN_USE", "BORROWED", "REPAIRING", "PENDING_EXCHANGE", "SHIPPED", "SCRAPPED");
+    private static final Set<String> STATUSES = Set.of("IN_STOCK", "IN_USE", "BORROWED", "REPAIRING", "PENDING_EXCHANGE", "SHIPPED", "SCRAPPED", "MISSING");
     // Phase 3 只登记基础状态；借用、维修、调换、发货状态由后续单据动作接管。
     private static final Map<String, List<String>> TRANSITIONS = Map.of(
             "IN_STOCK", List.of("IN_USE", "SCRAPPED"),
@@ -154,6 +154,7 @@ public class AssetDeviceService {
         validateIdentityEdit(old, updated);
         validate(updated, product);
         if ("SCRAPPED".equals(old.getStatus()) && !sameAssignments(old, updated)) throw BusinessException.conflict("报废设备不能修改归属");
+        if ("MISSING".equals(old.getStatus()) && !sameAssignments(old, updated)) throw BusinessException.conflict("盘点缺失设备的归属不能通过资料编辑修改");
         if ("IN_USE".equals(old.getStatus()) && (updated.getUserId() == null || updated.getDepartmentId() == null)) {
             throw BusinessException.badRequest("使用中的设备必须保留使用人和部门");
         }

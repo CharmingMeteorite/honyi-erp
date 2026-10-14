@@ -1,6 +1,6 @@
 # ERP 数据库蓝图
 
-本文档规划完整 ERP 的数据领域。Phase 0～4 已完成开发与历史验证：V1～V3 为认证、组织权限和操作日志，V4 为物资主数据，V5～V7 为具体设备、历史和设备权限，V8/V9 为仓库、库存、流水和正式期初库存单。2026-09-20 接管时恢复库实际只到 V7；使用当前真实 root 连接按 Flyway 顺序应用 V8、V9、V10，validate 通过，Phase 5 已完成。调拨、借用等后续单据和二维码仍为规划。
+本文档规划完整 ERP 的数据领域。当前源码与指定开发库已推进至 Phase 7：V1～V3 为认证、组织权限和操作日志，V4 为物资主数据，V5～V7 为设备与历史，V8/V9 为仓库库存和期初库存，V10 为入出库，V11 为领用，V12/V13 为盘点。2026-10-14 新建空 `erp` 库并按 Flyway 顺序迁移至 V13；实际验证见文末。调拨、借用、二维码等后续业务仍为规划。
 
 ## 领域规划
 
@@ -123,4 +123,12 @@ Phase 5 回归 15 项、完整 Maven 测试 70 项、Maven package 和前端 bui
 
 申请人为登录用户，部门保存快照；单据支持草稿、提交审批、通过/拒绝、取消、整单发放。审批不改变库存；只有 APPROVED 单据发放时在同一事务内扣减 Stock，设置 DEVICE 为 IN_USE、清空仓库并更新申请人归属，写入 StockLedger、DeviceHistory、OperationLog，再完成单据。设备占用主键跨入库/出库/领用复用，配合版本控制、行锁、条件库存更新和数据库唯一键防止重复发放与并发超扣。库存维度仍为仓库 + 产品。
 
-Phase 6 的 14 项真实 MySQL 回归及前端 build 在 2026-09-20 通过。2026-09-21 完整测试因 MySQL 不响应握手而失败：84 项中 19 项通过、65 项数据库上下文错误；Maven package 和最终数据库复核尚未完成，不能声称 Phase 6 验收通过。实现详见 [requisition-management.md](requisition-management.md)，实际结果和阻塞见 [phase6-verification.md](phase6-verification.md)。未实现 Phase 7 以后功能。
+Phase 6 的 14 项真实 MySQL 回归及前端 build 在 2026-09-20 通过。2026-09-21 完整测试因 MySQL 不响应握手而失败：84 项中 19 项通过、65 项数据库上下文错误；Maven package 和最终数据库复核当时尚未完成。实现详见 [requisition-management.md](requisition-management.md)，历史结果和阻塞见 [phase6-verification.md](phase6-verification.md)。本次 Phase 7 在新建的指定开发库完成了 Phase 1～6 的重新回归，结果见下文。
+
+## Phase 7 实际落地：库存盘点
+
+2026-10-14 在指定的 MySQL `192.168.1.247:3307/erp` 新建空库，按 Flyway 正常顺序应用当前源码 V1～V11，并独立 validate 通过。随后 V12 新建 `inv_stocktakes`、`inv_stocktake_items`、`inv_stocktake_device_checks`，加入盘点权限；V13 将设备编号唯一约束限定在盘点明细内，允许同一设备在不同产品明细中形成“错产品”结构化差异。V1～V11 与已经应用的 V12 均未改写。
+
+盘点单状态为 `DRAFT → COUNTING → COUNTED → CONFIRMED`，未确认状态可取消。提交时保存每个产品的账面数量、锁定数量和最后流水 ID，设备产品还保存逐台身份快照。录入实盘不修改库存；确认时持有单据、仓库、产品及库存锁，重查快照基准，任何后续库存或流水变化都拒绝确认。数量差异通过现有 `inv_stocks` 和 `inv_stock_ledgers` 调整；设备缺失经确认后状态变为 `MISSING`，保留原设备及其最后登记仓库，写 `asset_device_history` 和库存流水。账外、未登记、错产品、库外或状态异常设备只记录结构化差异，阻止自动调整。所有确认写入在同一事务，版本号和行锁阻止重复确认。
+
+实际接口、页面、差异语义及限制见 [stocktake-management.md](stocktake-management.md)；当前真实 MySQL 验证见 [phase7-verification.md](phase7-verification.md)。Phase 8 以后仍未实现。

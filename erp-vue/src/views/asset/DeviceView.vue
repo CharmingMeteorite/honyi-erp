@@ -33,7 +33,7 @@ const statusOptions = [
   { label: '公司持有', value: 'IN_STOCK' }, { label: '使用中', value: 'IN_USE' },
   { label: '借用中', value: 'BORROWED' }, { label: '维修中', value: 'REPAIRING' },
   { label: '待调换', value: 'PENDING_EXCHANGE' }, { label: '已发货', value: 'SHIPPED' },
-  { label: '已报废', value: 'SCRAPPED' },
+  { label: '已报废', value: 'SCRAPPED' }, { label: '盘点缺失', value: 'MISSING' },
 ]
 const dateFields = [
   { key: 'purchaseAt', label: '购入时间' }, { key: 'inboundAt', label: '入库登记时间' },
