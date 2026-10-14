@@ -42,6 +42,7 @@ class Phase8MySqlRegressionTests {
     @Autowired OpeningBalanceService openings;
     @Autowired InventoryOrderService orders;
     @Autowired AssetDeviceService devices;
+    @Autowired QrService qr;
     @Autowired AuthService auth;
     @Autowired PasswordEncoder encoder;
     @Autowired MockMvc mvc;
@@ -74,6 +75,8 @@ class Phase8MySqlRegressionTests {
     @AfterEach void cleanup() {
         reset(audit);
         CurrentUserContext.clear();
+        jdbc.update("DELETE FROM sys_qr_tokens WHERE product_id IN (?,?,?) OR device_id IN (SELECT id FROM asset_devices WHERE product_id IN (?,?,?))",
+                quantityProduct, deviceProduct, otherProduct, quantityProduct, deviceProduct, otherProduct);
         jdbc.update("DELETE FROM asset_service_requests WHERE operator_user_id=?", operator);
         jdbc.update("DELETE c FROM inv_order_device_claims c JOIN asset_exchange_devices d ON d.id=c.exchange_device_id JOIN asset_exchange_orders o ON o.id=d.order_id WHERE o.product_id IN (?,?)", deviceProduct, otherProduct);
         jdbc.update("DELETE d FROM asset_exchange_devices d JOIN asset_exchange_orders o ON o.id=d.order_id WHERE o.product_id IN (?,?)", deviceProduct, otherProduct);
@@ -403,12 +406,21 @@ class Phase8MySqlRegressionTests {
 
     @Test void requestIdConnectsExchangeOldNewHistoryStockAndAudit() throws Exception {
         Long old=usedDevice(),next=stockDevice();perform("repair",repairing(old),"unrepairable");
+        QrLabelView oldQr=qr.label("DEVICE",old,true),newQr=qr.label("DEVICE",next,true);
+        assertNotEquals(oldQr.getContent(),newQr.getContent());
         AssetServiceOrderView approved=approvedExchange(old,next);String token=token("SYSTEM_ADMIN");
         mvc.perform(post("/api/assets/exchanges/"+approved.getId()+"/execute").header("Authorization","Bearer "+token).header("X-Request-Id","p8-exchange")
                 .contentType("application/json").content(json.writeValueAsString(action(approved)))).andExpect(status().isOk());
         assertEquals(1,count("SELECT COUNT(*) FROM inv_stock_ledgers WHERE product_id=? AND business_type='EXCHANGE' AND request_id='p8-exchange'",deviceProduct));
         assertEquals(2,count("SELECT COUNT(*) FROM asset_device_history WHERE business_type='EXCHANGE' AND device_id IN (?,?) AND request_id='p8-exchange'",old,next));
         assertEquals(1,count("SELECT COUNT(*) FROM sys_operation_log WHERE operator_user_id=? AND operation_type='EXCHANGE_EXECUTE' AND request_id='p8-exchange'",operator));
+        current("ALL",department);
+        assertEquals(old,qr.scan(oldQr.getContent()).getDevice().getId());
+        assertEquals(next,qr.scan(newQr.getContent()).getDevice().getId());
+        assertEquals("SHIPPED",qr.scan(oldQr.getContent()).getDevice().getStatus());
+        assertEquals("IN_USE",qr.scan(newQr.getContent()).getDevice().getStatus());
+        assertEquals(oldQr.getContent(),qr.label("DEVICE",old,true).getContent());
+        assertEquals(newQr.getContent(),qr.label("DEVICE",next,true).getContent());
     }
 
     @Test void requestIdConnectsWarrantyDecisionAndLinkedRepairAudit() throws Exception {

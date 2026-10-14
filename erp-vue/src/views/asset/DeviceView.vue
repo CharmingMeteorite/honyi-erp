@@ -1,10 +1,18 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from '../../lib/api.js'
 import { hasPermission } from '../../lib/auth.js'
 
 const rows = ref([])
+const route = useRoute()
+const router = useRouter()
+const selectedDeviceIds = ref([])
+function openBatchLabels() {
+  if (selectedDeviceIds.value.length > 30) { ElMessage.warning('每次最多打印30张标签'); return }
+  router.push({ path: '/assets/qr', query: { ids: selectedDeviceIds.value.join(',') } })
+}
 const total = ref(0)
 const loading = ref(false)
 const saving = ref(false)
@@ -155,13 +163,19 @@ async function saveStatus() {
     await load()
   } catch (e) { if (e !== 'cancel' && e !== 'close') ElMessage.error(e.message) } finally { saving.value = false }
 }
-onMounted(() => { load(); loadOptions() })
+onMounted(async () => {
+  if (route.query.id) {
+    try { const device = await api.device(Number(route.query.id)); filters.keyword = device.deviceCode; await openDetail(device) }
+    catch (e) { ElMessage.error(e.message) }
+  }
+  load(); loadOptions()
+})
 </script>
 
 <template>
   <div class="page-heading">
     <div><h1>设备管理</h1><p class="muted">每台设备拥有独立编号。当前仅维护设备资料和基础状态。</p></div>
-    <el-button v-if="hasPermission('system.device.create')" type="primary" @click="openCreate">新增设备</el-button>
+    <div><el-button v-if="hasPermission('asset.qr.print') && selectedDeviceIds.length" @click="openBatchLabels">批量标签</el-button><el-button v-if="hasPermission('system.device.create')" type="primary" @click="openCreate">新增设备</el-button></div>
   </div>
   <el-card>
     <el-form inline class="device-filters" @submit.prevent="search">
@@ -172,7 +186,8 @@ onMounted(() => { load(); loadOptions() })
       <el-form-item><el-select v-model="filters.userId" clearable filterable remote :remote-method="searchUsers" placeholder="使用人或保管人"><el-option v-for="x in filterUsers" :key="x.id" :label="personLabel(x)" :value="x.id" /></el-select></el-form-item>
       <el-button type="primary" @click="search">查询</el-button><el-button @click="resetFilters">重置</el-button>
     </el-form>
-    <el-table v-loading="loading" :data="rows" row-key="id" empty-text="当前范围内暂无设备">
+    <el-table v-loading="loading" :data="rows" row-key="id" empty-text="当前范围内暂无设备" @selection-change="items => selectedDeviceIds = items.map(item => item.id)">
+      <el-table-column v-if="hasPermission('asset.qr.print')" type="selection" width="48" />
       <el-table-column prop="deviceCode" label="设备编号" min-width="130" />
       <el-table-column prop="productName" label="产品" min-width="160" show-overflow-tooltip />
       <el-table-column prop="model" label="型号" min-width="100" />
@@ -182,8 +197,9 @@ onMounted(() => { load(); loadOptions() })
       <el-table-column prop="departmentName" label="部门" min-width="110" />
       <el-table-column prop="userName" label="使用人" min-width="100" />
       <el-table-column label="状态" min-width="100"><template #default="{ row }"><el-tag :type="row.status === 'SCRAPPED' ? 'info' : 'primary'">{{ statusLabel(row.status) }}</el-tag></template></el-table-column>
-      <el-table-column label="操作" width="175" fixed="right"><template #default="{ row }">
+      <el-table-column label="操作" width="220" fixed="right"><template #default="{ row }">
         <el-button link @click="openDetail(row)">详情</el-button>
+        <el-button v-if="hasPermission('asset.qr.generate')" link @click="router.push({ path: '/assets/qr', query: { deviceId: row.id } })">二维码</el-button>
         <el-button v-if="hasPermission('system.device.update')" link type="primary" @click="openEdit(row)">编辑</el-button>
         <el-button v-if="hasPermission('system.device.status') && row.allowedStatuses?.length" link @click="openStatus(row)">状态</el-button>
       </template></el-table-column>

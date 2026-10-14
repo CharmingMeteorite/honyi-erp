@@ -1,6 +1,6 @@
 # ERP 数据库蓝图
 
-本文档规划完整 ERP 的数据领域。当前源码与指定开发库已推进至 Phase 8：V1～V3 为认证、组织权限和操作日志，V4 为物资主数据，V5～V7 为设备与历史，V8/V9 为仓库库存和期初库存，V10 为入出库，V11 为领用，V12/V13 为盘点，V14～V16 为维修、保修、换货及前向修正。2026-10-14 新建空 `erp` 库并按 Flyway 顺序迁移至 V13；实际验证见文末。调拨、借用、二维码等后续业务仍为规划。
+本文档规划完整 ERP 的数据领域。当前源码与指定开发库已推进至 Phase 9：V1～V3 为认证、组织权限和操作日志，V4 为物资主数据，V5～V7 为设备与历史，V8/V9 为仓库库存和期初库存，V10 为入出库，V11 为领用，V12/V13 为盘点，V14～V16 为维修、保修、换货及前向修正，V17 为二维码令牌和权限。2026-10-14 曾新建空 `erp` 库并按 Flyway 顺序迁移至 V13，随后按阶段前向迁移至 V17；本阶段实际验证见文末。调拨、借用、附件和报表等仍为规划。
 
 ## 领域规划
 
@@ -13,7 +13,7 @@
 - 盘点：盘点单、盘点明细
 - 服务：保修、维修、产品调换
 - 审批：流程实例、任务
-- 支撑：二维码、打印、附件、报表
+- 支撑：二维码与浏览器标签打印已实现；附件、报表仍为规划
 
 ## 规划表
 
@@ -36,7 +36,8 @@ stocktakes, stocktake_items
 service_warranties, service_repairs
 exchange_orders, exchange_relations
 workflow_instances, workflow_tasks
-files, qrcodes, print_jobs
+sys_qr_tokens  # V17 已实现
+files, print_jobs  # 仍为规划
 ```
 
 ## 核心模型
@@ -70,7 +71,7 @@ Phase 2 新增 Flyway `V4__create_master_data.sql`，未修改 V1/V2/V3。实际
 
 Device 状态只表示实体生命周期状态，`IN_STOCK` 表示公司持有，不代表库存数量。Phase 3 基础状态允许 IN_STOCK 与 IN_USE 互转，或转 SCRAPPED；报废终态。Phase 4 对已归属仓库的设备关闭普通状态变更，保留后续正式库存单据入口。BORROWED/REPAIRING/PENDING_EXCHANGE/SHIPPED 保留到后续单据使用，当前不能手工进入。身份在首次状态变化后锁定；归属资料变化、身份及日期更正、建档和状态变化写入历史，所有成功写操作沿用现有 request_id 操作日志。
 
-Phase 4 Stock 以 Product/仓库维度保存数量，StockLedger 记录执行产生的数量变化；设备型明细引用 Device，并将库存变化、状态变化、归属变化纳入一致事务。Repair/Loan 引用 Device，Exchange 明确保存旧、新 Device 关系；各单据应将来源类型/ID及业务时间扩展进设备历史。二维码以后以不透明标识关联 Device，不编码 SN/MAC，当前不创建二维码表。
+Phase 4 Stock 以 Product/仓库维度保存数量，StockLedger 记录执行产生的数量变化；设备型明细引用 Device，并将库存变化、状态变化、归属变化纳入一致事务。Repair/Loan 引用 Device，Exchange 明确保存旧、新 Device 关系；各单据应将来源类型/ID及业务时间扩展进设备历史。此段为 Phase 3/4 时的设计记录；V17 已用不透明令牌关联 Product 或 Device，二维码内容不编码 SN/MAC。
 
 V6 只补充设备权限到现有角色：仓库管理员拥有设备查看、创建、编辑和状态权限；普通员工拥有设备查看权限，服务层仍按 SELF 数据范围限制为本人作为使用人或保管人的设备。
 
@@ -131,7 +132,7 @@ Phase 6 的 14 项真实 MySQL 回归及前端 build 在 2026-09-20 通过。202
 
 盘点单状态为 `DRAFT → COUNTING → COUNTED → CONFIRMED`，未确认状态可取消。提交时保存每个产品的账面数量、锁定数量和最后流水 ID，设备产品还保存逐台身份快照。录入实盘不修改库存；确认时持有单据、仓库、产品及库存锁，重查快照基准，任何后续库存或流水变化都拒绝确认。数量差异通过现有 `inv_stocks` 和 `inv_stock_ledgers` 调整；设备缺失经确认后状态变为 `MISSING`，保留原设备及其最后登记仓库，写 `asset_device_history` 和库存流水。账外、未登记、错产品、库外或状态异常设备只记录结构化差异，阻止自动调整。所有确认写入在同一事务，版本号和行锁阻止重复确认。
 
-实际接口、页面、差异语义及限制见 [stocktake-management.md](stocktake-management.md)；当前真实 MySQL 验证见 [phase7-verification.md](phase7-verification.md)。Phase 9 以后仍未实现。
+实际接口、页面、差异语义及限制见 [stocktake-management.md](stocktake-management.md)；Phase 7 当时的真实 MySQL 验证见 [phase7-verification.md](phase7-verification.md)。
 
 ## Phase 8 实际落地：维修、保修与换货
 
@@ -139,4 +140,12 @@ Phase 6 的 14 项真实 MySQL 回归及前端 build 在 2026-09-20 通过。202
 
 维修库存设备送修写 `REPAIR_OUT` 流水，完成返库写 `REPAIR_RETURN`；换货新设备扣库写 `EXCHANGE`。设备状态、仓库归属、库存、流水、设备历史、单据状态和操作日志处于同一事务。保修申请保留保修日期快照，过保、尚未开始或日期不完整者不能按保内批准；可以明确拒绝或转自费维修。旧、新设备是独立主键与身份，换货单永久记录两者关系。
 
-接口、页面、状态与限制分别见 [repair-management.md](repair-management.md)、[warranty-management.md](warranty-management.md)、[exchange-management.md](exchange-management.md)。二维码、报表、附件和通知仍不在当前实现范围。
+接口、页面、状态与限制分别见 [repair-management.md](repair-management.md)、[warranty-management.md](warranty-management.md)、[exchange-management.md](exchange-management.md)。Phase 8 结束时二维码尚未实现；报表、附件和通知仍不在当前实现范围。
+
+## Phase 9 实际落地：二维码、扫码与标签打印
+
+2026-10-14 在指定 MySQL `192.168.1.247:3307/erp` 核对 V1～V16 全部 Success 与 checksum 后，先以 `mysqldump --single-transaction` 将现有数据库备份至 Git 忽略的 `.local/backups/`，再执行 V17。V17 建立 `sys_qr_tokens`，每个 Product 或 Device 最多关联一条令牌；令牌为 32 字节安全随机数的 43 字符 Base64url 编码，数据库使用 `ascii_bin` 唯一键。资源列分别有唯一键和真实外键，CHECK 保证类型与且仅有一个资源列相符，另有格式版本、启停状态和生成时间。新增二维码查看、生成、扫码、打印四项权限及既有角色授权。V1～V16 文件未修改。
+
+二维码内容为 `ERPQR1:P:<token>` 或 `ERPQR1:D:<token>`，不含 SN/MAC、人员信息、认证凭据或网址。扫码必须登录，由服务端按令牌查询真实资源，并同时校验二维码权限、原资源权限与现有数据范围。原标签在设备状态变化和换货后仍定位原 Device；扫码与打印不修改库存或设备业务状态。此格式不依赖 `ERP_PUBLIC_BASE_URL`；普通手机扫码器读取文本后仍需在 ERP 扫码页面提交内容。页面使用浏览器 `BarcodeDetector`（可用时）或输入框、扫码枪，标签通过浏览器打印。
+
+实际接口、约束、权限、标签尺寸和限制见 [qr-management.md](qr-management.md)，本次数据库、真实解码与构建结果见 [phase9-verification.md](phase9-verification.md)。

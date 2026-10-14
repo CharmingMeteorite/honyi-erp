@@ -23,6 +23,7 @@ import InventoryOrderView from '../views/inventory/InventoryOrderView.vue'
 import RequisitionView from '../views/inventory/RequisitionView.vue'
 import StocktakeView from '../views/inventory/StocktakeView.vue'
 import AssetServiceOrderView from '../views/asset/AssetServiceOrderView.vue'
+import QrView from '../views/asset/QrView.vue'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -49,6 +50,7 @@ const router = createRouter({
       { path: 'assets/warranties', component: AssetServiceOrderView, props: { kind: 'warranty' }, meta: { permission: 'asset.warranty.view' } },
       { path: 'assets/exchanges', component: AssetServiceOrderView, props: { kind: 'exchange' }, meta: { permission: 'asset.exchange.view' } },
       { path: 'assets/devices', component: DeviceView, meta: { permission: 'system.device.view' } },
+      { path: 'assets/qr', component: QrView, meta: { permission: 'asset.qr.view' } },
     ] },
     { path: '/403', component: ForbiddenView }, { path: '/404', component: NotFoundView }, { path: '/:pathMatch(.*)*', redirect: '/404' },
   ],

@@ -1,6 +1,6 @@
 # ERP 内部物资管理系统
 
-公司内部物资、库存、设备及生命周期管理系统。当前源码覆盖 Phase 0～8：认证与权限、主数据、设备、仓库库存、入库/出库、领用申请/发放、库存盘点，以及设备维修、保修申请与换货处理。Phase 8 在 `feature/phase8-repair-warranty-exchange` 分支开发；Phase 9～10C 尚未实现。Phase 0～6 的历史验证记录不能替代本次验证，当前结果见 [docs/phase8-verification.md](docs/phase8-verification.md)。
+公司内部物资、库存、设备及生命周期管理系统。当前源码覆盖 Phase 0～9：认证与权限、主数据、设备、仓库库存、入库/出库、领用申请/发放、库存盘点、设备维修/保修/换货，以及二维码识别和标签打印。Phase 9 在 `feature/phase9-qr-scan-print` 分支开发；Phase 10 尚未实现。各阶段历史记录不能替代当前验证，Phase 9 结果见 [docs/phase9-verification.md](docs/phase9-verification.md)。
 
 ## 技术栈
 
@@ -93,4 +93,8 @@ docs/      编码规范、参考索引和数据库蓝图
 
 ## Phase 8 设备异常处理
 
-维修、保修、换货分别使用 `/api/assets/repairs`、`/api/assets/warranties`、`/api/assets/exchanges` 和对应的 `/assets/repairs`、`/assets/warranties`、`/assets/exchanges` 页面。三类单据独立保存，维修/换货复用设备占用、库存与历史。当前最高 Migration 为 V16。状态规则及真实验证见 `docs/repair-management.md`、`docs/warranty-management.md`、`docs/exchange-management.md`、`docs/phase8-verification.md`。
+维修、保修、换货分别使用 `/api/assets/repairs`、`/api/assets/warranties`、`/api/assets/exchanges` 和对应的 `/assets/repairs`、`/assets/warranties`、`/assets/exchanges` 页面。三类单据独立保存，维修/换货复用设备占用、库存与历史。Phase 8 结束时最高 Migration 为 V16。状态规则及当时的验证见 `docs/repair-management.md`、`docs/warranty-management.md`、`docs/exchange-management.md`、`docs/phase8-verification.md`。
+
+## Phase 9 二维码与标签
+
+`/api/assets/qr` 提供 Product/Device 二维码生成、标签数据和登录后扫码查询；前端 `/assets/qr` 支持手动/扫码枪输入、浏览器支持时的摄像头识别，以及单张和最多 30 张标签预览与打印。二维码使用不依赖域名的 `ERPQR1` 不透明随机令牌格式，须通过 ERP 扫码页面解析，不能作为匿名访问凭据。当前最高 Migration 为 V17。格式、权限、打印参数和限制见 [docs/qr-management.md](docs/qr-management.md)。

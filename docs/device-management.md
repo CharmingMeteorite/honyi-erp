@@ -1,5 +1,7 @@
 # Device 管理（Phase 3，含 Phase 4 兼容规则）
 
+本文件保留早期设备建档与生命周期的历史设计记录。Phase 9 已新增二维码生成、扫码和标签打印；当前实现见 [qr-management.md](qr-management.md)，以下“二维码未实现”等表述仅指 Phase 3 当时状态。
+
 Phase 3 档案管理规则继续有效。Phase 4 已建立仓库/库存/期初单：仓库归属只能由期初完成或后续正式库存业务控制，已归属仓库的设备不能使用普通状态动作；详见 [inventory-management.md](inventory-management.md)。
 
 ## 边界与实际模型
