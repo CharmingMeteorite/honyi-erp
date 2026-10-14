@@ -1,6 +1,6 @@
 # ERP 数据库蓝图
 
-本文档规划完整 ERP 的数据领域。当前源码与指定开发库已推进至 Phase 7：V1～V3 为认证、组织权限和操作日志，V4 为物资主数据，V5～V7 为设备与历史，V8/V9 为仓库库存和期初库存，V10 为入出库，V11 为领用，V12/V13 为盘点。2026-10-14 新建空 `erp` 库并按 Flyway 顺序迁移至 V13；实际验证见文末。调拨、借用、二维码等后续业务仍为规划。
+本文档规划完整 ERP 的数据领域。当前源码与指定开发库已推进至 Phase 8：V1～V3 为认证、组织权限和操作日志，V4 为物资主数据，V5～V7 为设备与历史，V8/V9 为仓库库存和期初库存，V10 为入出库，V11 为领用，V12/V13 为盘点，V14～V16 为维修、保修、换货及前向修正。2026-10-14 新建空 `erp` 库并按 Flyway 顺序迁移至 V13；实际验证见文末。调拨、借用、二维码等后续业务仍为规划。
 
 ## 领域规划
 
@@ -131,4 +131,12 @@ Phase 6 的 14 项真实 MySQL 回归及前端 build 在 2026-09-20 通过。202
 
 盘点单状态为 `DRAFT → COUNTING → COUNTED → CONFIRMED`，未确认状态可取消。提交时保存每个产品的账面数量、锁定数量和最后流水 ID，设备产品还保存逐台身份快照。录入实盘不修改库存；确认时持有单据、仓库、产品及库存锁，重查快照基准，任何后续库存或流水变化都拒绝确认。数量差异通过现有 `inv_stocks` 和 `inv_stock_ledgers` 调整；设备缺失经确认后状态变为 `MISSING`，保留原设备及其最后登记仓库，写 `asset_device_history` 和库存流水。账外、未登记、错产品、库外或状态异常设备只记录结构化差异，阻止自动调整。所有确认写入在同一事务，版本号和行锁阻止重复确认。
 
-实际接口、页面、差异语义及限制见 [stocktake-management.md](stocktake-management.md)；当前真实 MySQL 验证见 [phase7-verification.md](phase7-verification.md)。Phase 8 以后仍未实现。
+实际接口、页面、差异语义及限制见 [stocktake-management.md](stocktake-management.md)；当前真实 MySQL 验证见 [phase7-verification.md](phase7-verification.md)。Phase 9 以后仍未实现。
+
+## Phase 8 实际落地：维修、保修与换货
+
+2026-10-14 在指定 MySQL `192.168.1.247:3307/erp` 核对 V13 及全部 checksum 后，先备份数据库，再前向应用 V14～V16。V14 建立独立的维修、保修、换货单，换货新旧设备关系，统一客户端动作防重表；扩展已有设备占用表，使库存入出库、领用、维修和换货互斥。V15 增加设备版本快照，防止中途设备资料变化后恢复旧归属；V16 修正保修菜单的复数路径。已经应用的 Migration 均未改写。三版真实迁移、validate/info、约束与权限核验及测试结果见 [phase8-verification.md](phase8-verification.md)。
+
+维修库存设备送修写 `REPAIR_OUT` 流水，完成返库写 `REPAIR_RETURN`；换货新设备扣库写 `EXCHANGE`。设备状态、仓库归属、库存、流水、设备历史、单据状态和操作日志处于同一事务。保修申请保留保修日期快照，过保、尚未开始或日期不完整者不能按保内批准；可以明确拒绝或转自费维修。旧、新设备是独立主键与身份，换货单永久记录两者关系。
+
+接口、页面、状态与限制分别见 [repair-management.md](repair-management.md)、[warranty-management.md](warranty-management.md)、[exchange-management.md](exchange-management.md)。二维码、报表、附件和通知仍不在当前实现范围。

@@ -96,16 +96,16 @@ public interface AssetDeviceMapper {
 
     @Select("SELECT * FROM asset_devices WHERE id=#{id}") AssetDevice selectById(@Param("id") Long id);
     @Select("SELECT * FROM asset_devices WHERE id=#{id} FOR UPDATE") AssetDevice selectByIdForUpdate(@Param("id") Long id);
-    @Update("UPDATE asset_devices SET warehouse_id=#{warehouseId} WHERE id=#{id} AND warehouse_id IS NULL AND status='IN_STOCK'") int updateWarehouse(@Param("id") Long id, @Param("warehouseId") Long warehouseId);
+    @Update("UPDATE asset_devices SET version=version+1,warehouse_id=#{warehouseId} WHERE id=#{id} AND warehouse_id IS NULL AND status='IN_STOCK'") int updateWarehouse(@Param("id") Long id, @Param("warehouseId") Long warehouseId);
     @Select("SELECT id FROM asset_devices WHERE warehouse_id=#{warehouseId} AND product_id=#{productId} AND status='IN_STOCK' ORDER BY id FOR UPDATE")
     List<Long> selectStockDeviceIdsForUpdate(@Param("warehouseId") Long warehouseId, @Param("productId") Long productId);
     @Select("SELECT COUNT(*) FROM asset_devices WHERE warehouse_id=#{warehouseId} AND product_id=#{productId} AND status='IN_STOCK'") int countInStockByWarehouseProduct(@Param("warehouseId") Long warehouseId, @Param("productId") Long productId);
-    @Update("UPDATE asset_devices SET status='SHIPPED',warehouse_id=NULL WHERE id=#{id} AND warehouse_id=#{warehouseId} AND status='IN_STOCK'")
+    @Update("UPDATE asset_devices SET version=version+1,status='SHIPPED',warehouse_id=NULL WHERE id=#{id} AND warehouse_id=#{warehouseId} AND status='IN_STOCK'")
     int shipFromWarehouse(@Param("id") Long id, @Param("warehouseId") Long warehouseId);
-    @Update("UPDATE asset_devices SET status='IN_USE',warehouse_id=NULL,department_id=#{departmentId},user_id=#{userId},custodian_id=#{userId},first_use_at=COALESCE(first_use_at,CURRENT_TIMESTAMP) WHERE id=#{id} AND warehouse_id=#{warehouseId} AND status='IN_STOCK'")
+    @Update("UPDATE asset_devices SET version=version+1,status='IN_USE',warehouse_id=NULL,department_id=#{departmentId},user_id=#{userId},custodian_id=#{userId},first_use_at=COALESCE(first_use_at,CURRENT_TIMESTAMP) WHERE id=#{id} AND warehouse_id=#{warehouseId} AND status='IN_STOCK'")
     int issueFromWarehouse(@Param("id") Long id, @Param("warehouseId") Long warehouseId,
                            @Param("userId") Long userId, @Param("departmentId") Long departmentId);
-    @Update("UPDATE asset_devices SET status='MISSING' WHERE id=#{id} AND warehouse_id=#{warehouseId} AND product_id=#{productId} AND status='IN_STOCK'")
+    @Update("UPDATE asset_devices SET version=version+1,status='MISSING' WHERE id=#{id} AND warehouse_id=#{warehouseId} AND product_id=#{productId} AND status='IN_STOCK'")
     int markStocktakeMissing(@Param("id") Long id, @Param("warehouseId") Long warehouseId, @Param("productId") Long productId);
     @Select("SELECT device_id FROM inv_order_device_claims WHERE device_id=#{id} FOR UPDATE")
     Long selectInventoryClaim(@Param("id") Long id);
@@ -127,15 +127,15 @@ public interface AssetDeviceMapper {
     @Options(useGeneratedKeys = true, keyProperty = "id") int insert(AssetDevice device);
 
     @Update("""
-            UPDATE asset_devices SET serial_number=#{serialNumber},mac_address=#{macAddress},asset_no=#{assetNo},
+            UPDATE asset_devices SET version=version+1,serial_number=#{serialNumber},mac_address=#{macAddress},asset_no=#{assetNo},
               department_id=#{departmentId},user_id=#{userId},custodian_id=#{custodianId},purchase_at=#{purchaseAt},
               inbound_at=#{inboundAt},first_use_at=#{firstUseAt},warranty_start_at=#{warrantyStartAt},warranty_end_at=#{warrantyEndAt},
               remark=#{remark},notes=#{notes} WHERE id=#{id}
             """)
     int update(AssetDevice device);
 
-    @Update("UPDATE asset_devices SET status=#{toStatus} WHERE id=#{id} AND status=#{fromStatus}") int updateStatusFrom(@Param("id") Long id, @Param("fromStatus") String fromStatus, @Param("toStatus") String toStatus);
-    @Update("UPDATE asset_devices SET device_code=#{deviceCode} WHERE id=#{id}") int updateDeviceCode(@Param("id") Long id, @Param("deviceCode") String deviceCode);
+    @Update("UPDATE asset_devices SET version=version+1,status=#{toStatus} WHERE id=#{id} AND status=#{fromStatus}") int updateStatusFrom(@Param("id") Long id, @Param("fromStatus") String fromStatus, @Param("toStatus") String toStatus);
+    @Update("UPDATE asset_devices SET version=version+1,device_code=#{deviceCode} WHERE id=#{id}") int updateDeviceCode(@Param("id") Long id, @Param("deviceCode") String deviceCode);
 
     @Select("""
             SELECT h.*, fd.department_name AS from_department_name, td.department_name AS to_department_name,

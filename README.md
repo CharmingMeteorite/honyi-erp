@@ -1,6 +1,6 @@
 # ERP 内部物资管理系统
 
-公司内部物资、库存、设备及生命周期管理系统。当前源码覆盖 Phase 0～7：认证与权限、主数据、设备、仓库库存、入库/出库、领用申请/发放及库存盘点。Phase 7 在 `feature/phase7-stocktake` 分支开发；Phase 8～10C 尚未实现。Phase 0～6 的历史验证记录不能替代本次验证，当前结果见 [docs/phase7-verification.md](docs/phase7-verification.md)。
+公司内部物资、库存、设备及生命周期管理系统。当前源码覆盖 Phase 0～8：认证与权限、主数据、设备、仓库库存、入库/出库、领用申请/发放、库存盘点，以及设备维修、保修申请与换货处理。Phase 8 在 `feature/phase8-repair-warranty-exchange` 分支开发；Phase 9～10C 尚未实现。Phase 0～6 的历史验证记录不能替代本次验证，当前结果见 [docs/phase8-verification.md](docs/phase8-verification.md)。
 
 ## 技术栈
 
@@ -90,3 +90,7 @@ docs/      编码规范、参考索引和数据库蓝图
 管理员通过 `ERP_SEED_ADMIN_USERNAME`、`ERP_SEED_ADMIN_PASSWORD`、`ERP_SEED_ADMIN_REAL_NAME` 和 `ERP_SEED_ADMIN_EMPLOYEE_NO` 初始化，密码使用 BCrypt，不会写入源码或日志。用户、部门、角色和权限变更会记录到 `sys_operation_log`；停用用户或修改密码/角色后，该用户已有 Token 会失效。
 
 库存盘点使用 `/api/inventory/stocktakes` 和前端 `/inventory/stocktakes`，支持草稿、账面快照、实盘、结构化设备差异、确认调整和历史查询。设备异常中的账外、未登记、错产品、库外与状态异常须先人工核查；确认设备缺失时将原设备标记为 `MISSING` 并记录历史和库存流水。实现边界见 [docs/stocktake-management.md](docs/stocktake-management.md)。完整接口以 `erp/src/main/java/com/haucheng/erp/controller/` 和前端路由为准；数据库版本以实际 Flyway history 为准。当前 Phase 7 使用 V12 和修正盘点设备唯一键的 V13。
+
+## Phase 8 设备异常处理
+
+维修、保修、换货分别使用 `/api/assets/repairs`、`/api/assets/warranties`、`/api/assets/exchanges` 和对应的 `/assets/repairs`、`/assets/warranties`、`/assets/exchanges` 页面。三类单据独立保存，维修/换货复用设备占用、库存与历史。当前最高 Migration 为 V16。状态规则及真实验证见 `docs/repair-management.md`、`docs/warranty-management.md`、`docs/exchange-management.md`、`docs/phase8-verification.md`。

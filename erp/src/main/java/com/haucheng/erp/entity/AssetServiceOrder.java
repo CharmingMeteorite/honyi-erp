@@ -1,0 +1,68 @@
+package com.haucheng.erp.entity;
+
+import lombok.Data;
+import java.time.LocalDateTime;
+
+@Data
+public class AssetServiceOrder {
+    private Long id;
+    private Long deviceVersion;
+    private Long newDeviceVersion;
+    private Long deviceId;
+    private Long productId;
+    private Long applicantUserId;
+    private Long departmentId;
+    private Long handlerUserId;
+    private Long approverUserId;
+    private Long executorUserId;
+    private Long version;
+    private Long originalWarehouseId;
+    private Long originalDepartmentId;
+    private Long originalUserId;
+    private Long originalCustodianId;
+    private Long warrantyId;
+    private Long newDeviceId;
+    private Long newWarehouseId;
+    private Long newDepartmentId;
+    private Long newUserId;
+    private Long newCustodianId;
+    private String orderNo;
+    private String clientRequestId;
+    private String deviceCode;
+    private String productCode;
+    private String productName;
+    private String serialNumber;
+    private String macAddress;
+    private String assetNo;
+    private String status;
+    private String reason;
+    private String remark;
+    private String result;
+    private String requestId;
+    private String originalStatus;
+    private String faultPhenomenon;
+    private String faultDescription;
+    private String notes;
+    private String serviceProvider;
+    private String serviceLocation;
+    private String warrantyStatus;
+    private String decision;
+    private String newDeviceCode;
+    private String newSerialNumber;
+    private String newMacAddress;
+    private String newAssetNo;
+    private String applicantName;
+    private String handlerName;
+    private String approverName;
+    private String executorName;
+    private LocalDateTime submittedAt;
+    private LocalDateTime acceptedAt;
+    private LocalDateTime processedAt;
+    private LocalDateTime completedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private LocalDateTime expectedCompleteAt;
+    private LocalDateTime sentAt;
+    private LocalDateTime warrantyStartAt;
+    private LocalDateTime warrantyEndAt;
+}

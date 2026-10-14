@@ -22,6 +22,7 @@ import OpeningBalanceView from '../views/inventory/OpeningBalanceView.vue'
 import InventoryOrderView from '../views/inventory/InventoryOrderView.vue'
 import RequisitionView from '../views/inventory/RequisitionView.vue'
 import StocktakeView from '../views/inventory/StocktakeView.vue'
+import AssetServiceOrderView from '../views/asset/AssetServiceOrderView.vue'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -44,6 +45,9 @@ const router = createRouter({
       { path: 'apply/requisitions', component: RequisitionView, meta: { permission: 'apply.requisition.view' } },
       { path: 'inventory/stocktakes', component: StocktakeView, meta: { permission: 'inventory.stocktake.view' } },
       { path: 'inventory/openings', component: OpeningBalanceView, meta: { permission: 'inventory.stock.opening' } },
+      { path: 'assets/repairs', component: AssetServiceOrderView, props: { kind: 'repair' }, meta: { permission: 'asset.repair.view' } },
+      { path: 'assets/warranties', component: AssetServiceOrderView, props: { kind: 'warranty' }, meta: { permission: 'asset.warranty.view' } },
+      { path: 'assets/exchanges', component: AssetServiceOrderView, props: { kind: 'exchange' }, meta: { permission: 'asset.exchange.view' } },
       { path: 'assets/devices', component: DeviceView, meta: { permission: 'system.device.view' } },
     ] },
     { path: '/403', component: ForbiddenView }, { path: '/404', component: NotFoundView }, { path: '/:pathMatch(.*)*', redirect: '/404' },

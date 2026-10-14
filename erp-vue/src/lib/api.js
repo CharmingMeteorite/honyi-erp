@@ -39,6 +39,14 @@ export const api = {
   requisitionAction: (id, action, data) => request(`/api/apply/requisitions/${id}/${action}`, { method: 'POST', body: JSON.stringify(data) }),
   requisitionOptions: (resource, params = {}) => request(`/api/apply/requisitions/options/${resource}?${query(params)}`),
 
+  assetServicePath: (kind) => `/api/assets/${kind === 'warranty' ? 'warranties' : `${kind}s`}`,
+  assetServiceOrders: (kind, params = {}) => request(`${api.assetServicePath(kind)}?${query(params)}`),
+  assetServiceOrder: (kind, id) => request(`${api.assetServicePath(kind)}/${id}`),
+  createAssetServiceOrder: (kind, data) => request(api.assetServicePath(kind), { method: 'POST', body: JSON.stringify(data) }),
+  updateAssetServiceOrder: (kind, id, data) => request(`${api.assetServicePath(kind)}/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  assetServiceAction: (kind, id, action, data) => request(`${api.assetServicePath(kind)}/${id}/${action}`, { method: 'POST', body: JSON.stringify(data) }),
+  assetServiceDeviceOptions: (kind, params = {}) => request(`${api.assetServicePath(kind)}/options/devices?${query(params)}`),
+
   login: (data) => request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   logout: () => request('/api/auth/logout', { method: 'POST' }),
   me: () => request('/api/auth/me'),

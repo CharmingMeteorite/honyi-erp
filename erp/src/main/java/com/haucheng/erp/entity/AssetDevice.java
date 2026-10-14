@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 @Data
 public class AssetDevice {
     private Long id;
+    private Long version;
     private String deviceCode;
     private Long productId;
     private String serialNumber;
