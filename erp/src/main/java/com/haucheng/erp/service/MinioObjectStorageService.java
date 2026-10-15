@@ -40,6 +40,16 @@ public class MinioObjectStorageService {
         return client;
     }
 
+    /** Read-only readiness probe; never creates a missing bucket. */
+    public boolean isAvailable() {
+        try {
+            return client().bucketExists(BucketExistsArgs.builder().bucket(bucket).build());
+        } catch (Exception ex) {
+            log.warn("对象存储健康检查失败，错误类型={}", ex.getClass().getSimpleName());
+            return false;
+        }
+    }
+
     public void put(String key, byte[] bytes, String type) {
         try {
             ready().putObject(PutObjectArgs.builder().bucket(bucket).object(key)

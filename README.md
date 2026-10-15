@@ -1,6 +1,6 @@
 # ERP 内部物资管理系统
 
-公司内部物资、库存、设备及生命周期管理系统。当前源码覆盖 Phase 0～10B，并在 `feature/phase10c-attachments-notifications` 实现 Phase 10C 附件与站内通知。Phase 10D 尚未实现。各阶段历史记录不能替代当前验证；本轮结果见 [docs/phase10c-verification.md](docs/phase10c-verification.md)。
+公司内部物资、库存、设备及生命周期管理系统。当前源码覆盖 Phase 0～10C；Phase 10D 将 Vue 生产产物和 Spring Boot 装入一个可执行 JAR，供手动上传与启动。实际验证见 [docs/phase10d-verification.md](docs/phase10d-verification.md)。
 
 ## 技术栈
 
@@ -27,7 +27,7 @@ Copy-Item .env.example .env
 ./mvnw.cmd spring-boot:run
 ```
 
-应用默认监听 `http://localhost:8080`。Flyway 启动时自动执行 `src/main/resources/db/migration`。可通过环境变量 `ERP_SEED_ADMIN_USERNAME` 和 `ERP_SEED_ADMIN_PASSWORD` 初始化开发管理员；两个变量都为空时不会创建用户。
+应用默认监听 `http://localhost:8080`。启动前必须提供 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`；不再回退到本机数据库。Flyway 启动时校验并执行 `src/main/resources/db/migration` 中的待执行迁移，禁用对非空库的自动 baseline。可通过环境变量 `ERP_SEED_ADMIN_USERNAME` 和 `ERP_SEED_ADMIN_PASSWORD` 初始化开发管理员；两个变量都为空时不会创建用户。
 
 ## 前端
 
@@ -38,7 +38,11 @@ npm install
 npm run dev
 ```
 
-前端默认监听 `http://localhost:5173`，开发代理将 `/api` 和 `/health` 转发到后端。生产构建使用 `npm run build`。
+前端默认监听 `http://localhost:5173`，开发代理将 `/api` 和 `/health` 转发到后端。生产版使用同源 API，并由单 JAR 提供静态资源。
+
+## 单 JAR 手动交付
+
+在 Windows PowerShell 中用 Java 17、Node.js 22.18+ 运行 `./scripts/build-release.ps1`。脚本执行 `npm ci`、前端 build、指定开发库 Flyway 校验、完整 Maven 测试与 `clean package`，再核查 JAR 内容、SHA-256，将可上传的 JAR 放入 Git 忽略的 `.local/releases/`。生产配置使用外部环境变量；配置模板为 [.env.release.example](.env.release.example)。手动上传、启动、健康检查、备份和恢复步骤见 [部署指南](docs/deployment-guide.md) 与 [运维手册](docs/operations-runbook.md)。本仓库不自动远程部署服务器。
 
 ## Phase 0 / Phase 1 基础 API
 
