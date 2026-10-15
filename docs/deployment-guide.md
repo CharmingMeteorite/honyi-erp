@@ -19,23 +19,28 @@ $env:JAVA_HOME = 'C:\path\to\jdk-17'
 
 配置项见根目录 `.env.release.example`，该文件只有占位值。真正配置必须放在工作区外且仅部署账号可读。必填：`DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`MINIO_ENDPOINT`、`MINIO_BUCKET`、`MINIO_ACCESS_KEY`、`MINIO_SECRET_KEY`；常用：`SPRING_PROFILES_ACTIVE=prod`、`SERVER_PORT`、`ERP_LOG_DIR`、`DB_CONNECTION_TIMEOUT_MS`。保留 `FLYWAY_ENABLED=true`；管理账号种子变量正常上线应为空。Spring Boot 不会自动读取根目录 `.env`，必须注入进程环境或使用受限的外部 Spring 配置。不要把服务端密钥设成 `VITE_*` 前端变量。
 
-Windows 手动前台启动示例（先由受限的本地配置或密钥管理系统给当前 PowerShell 会话设置上述变量）：
+Windows 手动前台启动示例。先把 `.env.release.example` 中的占位值替换成真实目标配置，保存到仓库外的 `C:\erp\secure\erp.env`，仅授予部署账号读取权限；以下命令只给当前 PowerShell 进程及其子进程注入变量，不打印值：
 
 ```powershell
-$env:SPRING_PROFILES_ACTIVE = 'prod'
-$env:SERVER_PORT = '8080'
-$env:ERP_LOG_DIR = 'C:\erp\logs'
+Get-Content 'C:\erp\secure\erp.env' | ForEach-Object {
+    if ($_ -match '^([A-Za-z_][A-Za-z0-9_]*)=(.*)$') {
+        [Environment]::SetEnvironmentVariable($matches[1], $matches[2], 'Process')
+    }
+}
 & "$env:JAVA_HOME\bin\java.exe" -jar 'C:\erp\releases\erp.jar'
 ```
 
-Linux 手动前台启动示例（先通过受限的环境配置为当前 shell 设置上述变量）：
+Linux 手动前台启动示例。将配置文件放在 `/etc/erp/erp.env`，归部署账号所有并设置 `chmod 600`；如下读取 `KEY=value` 原文，不执行配置内容：
 
 ```sh
-export SPRING_PROFILES_ACTIVE=prod SERVER_PORT=8080 ERP_LOG_DIR=/opt/erp/logs
+while IFS='=' read -r key value; do
+  case "$key" in ''|\#*) continue ;; esac
+  export "$key=$value"
+done < /etc/erp/erp.env
 java -jar /opt/erp/releases/erp.jar
 ```
 
-示例 JAR 路径需替换成实际上传路径，Java 17 必须在 PATH。前台运行可用 Ctrl+C 正常停止；如使用系统服务管理器，只停止该 ERP 实例，不按名称杀所有 Java 进程。重新启动时先确认旧进程退出及端口空闲，再用同一组外部配置启动新 JAR。生产外部 HTTPS/TLS、进程托管和访问范围须由实际服务器环境确定；本阶段未配置或验证。
+示例 JAR 路径需替换成实际上传路径，`SPRING_PROFILES_ACTIVE=prod`、`DB_*`、`MINIO_*` 等值均从外部文件获取；Windows 的 `JAVA_HOME` 应指向 JDK 17，Linux 的 `java` 应为 Java 17。这些环境文件不支持跨行值；遇到特殊字符仍以整行第一个 `=` 后的原文作为值。前台运行可用 Ctrl+C 正常停止；如使用系统服务管理器，只停止该 ERP 实例，不按名称杀所有 Java 进程。重新启动时先确认旧进程退出及端口空闲，再用同一组外部配置启动新 JAR。生产外部 HTTPS/TLS、进程托管和访问范围须由实际服务器环境确定；本阶段未配置或验证。
 
 ## 启动、升级和回滚
 
