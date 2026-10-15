@@ -1,6 +1,6 @@
 # ERP 内部物资管理系统
 
-公司内部物资、库存、设备及生命周期管理系统。当前源码覆盖 Phase 0～9：认证与权限、主数据、设备、仓库库存、入库/出库、领用申请/发放、库存盘点、设备维修/保修/换货，以及二维码识别和标签打印。Phase 9 在 `feature/phase9-qr-scan-print` 分支开发；Phase 10 尚未实现。各阶段历史记录不能替代当前验证，Phase 9 结果见 [docs/phase9-verification.md](docs/phase9-verification.md)。
+公司内部物资、库存、设备及生命周期管理系统。当前源码覆盖 Phase 0～9，并在 `feature/phase10a-dashboard-query` 实现 Phase 10A 首页 Dashboard 和综合查询。Phase 10B 报表/Excel、10C 附件/通知和 10D 尚未实现。各阶段历史记录不能替代当前验证；Phase 10A 本轮结果见 [docs/phase10a-verification.md](docs/phase10a-verification.md)。
 
 ## 技术栈
 
@@ -10,19 +10,13 @@
 
 ## 开发环境
 
-需要 Java 17、Node.js 22+、npm 和 MySQL 8。先将 `.env.example` 复制为 `.env`，设置本机密码；`DB_PASSWORD` 与 `MYSQL_PASSWORD` 必须一致。`.env` 已被 Git 忽略，不要提交真实密码或 Token 密钥。
+需要 Java 17、Node.js 22+、npm 和 MySQL 8。当前恢复版本唯一指定开发库为 `192.168.1.247:3307/erp`，用户名 `root`；通过本地 `.env` 或进程环境设置 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`，不使用应用的默认本机连接。`.env` 已被 Git 忽略，不要提交真实密码或 Token 密钥。已有本地配置时保留原文件；新环境才从 `.env.example` 创建配置并填写指定连接。
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-启动开发数据库：
-
-```powershell
-docker compose -f docker/docker-compose.yml up -d mysql
-```
-
-Docker Compose 会从仓库根目录的 `.env` 读取数据库容器配置。Spring Boot 不会自动读取该 `.env` 文件；本地启动后端时，还需在当前 shell 设置 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` 等应用环境变量。
+仓库仍保留 `docker/` 环境模板；当前阶段使用上述指定 MySQL，不启动或切换 Docker 数据库。Spring Boot 不会自动读取根目录 `.env` 文件，本地启动后端前需把应用连接配置加载到当前 shell 的进程环境。
 
 ## 后端
 
@@ -98,3 +92,7 @@ docs/      编码规范、参考索引和数据库蓝图
 ## Phase 9 二维码与标签
 
 `/api/assets/qr` 提供 Product/Device 二维码生成、标签数据和登录后扫码查询；前端 `/assets/qr` 支持手动/扫码枪输入、浏览器支持时的摄像头识别，以及单张和最多 30 张标签预览与打印。二维码使用不依赖域名的 `ERPQR1` 不透明随机令牌格式，须通过 ERP 扫码页面解析，不能作为匿名访问凭据。当前最高 Migration 为 V17。格式、权限、打印参数和限制见 [docs/qr-management.md](docs/qr-management.md)。
+
+## Phase 10A 首页与综合查询
+
+登录后首页调用 `GET /api/dashboard/summary` 展示当前账号可查看的统计、设备状态与近期业务动态。`/query` 页面调用 `GET /api/query`，统一搜索物资、设备、仓库、入库、出库、领用、盘点、维修、保修、换货；支持类型、状态、日期和分页。接口只读，沿用各模块既有查看权限及数据范围，没有新增 Migration，最高仍为 V17。统计口径与跳转限制见 [docs/dashboard-management.md](docs/dashboard-management.md) 和 [docs/global-query.md](docs/global-query.md)。

@@ -17,6 +17,8 @@ export async function request(path, options = {}) {
 }
 function query(params) { const value = new URLSearchParams(); Object.entries(params).forEach(([key, item]) => { if (item !== undefined && item !== null && item !== '') value.set(key, item) }); return value.toString() }
 export const api = {
+  dashboardSummary: () => request('/api/dashboard/summary'),
+  globalQuery: (params = {}) => request(`/api/query?${query(params)}`),
   qrLabel: (type, id, generate = false) => request(`/api/assets/qr/${type}/${id}`, { method: generate ? 'POST' : 'GET' }),
   qrLabels: (type, ids) => request(`/api/assets/qr/${type}/labels`, { method: 'POST', body: JSON.stringify({ ids }) }),
   qrScan: (content) => request('/api/assets/qr/scan', { method: 'POST', body: JSON.stringify({ content }) }),
