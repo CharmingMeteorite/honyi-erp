@@ -1,6 +1,6 @@
 # ERP 内部物资管理系统
 
-公司内部物资、库存、设备及生命周期管理系统。当前源码覆盖 Phase 0～9，并在 `feature/phase10a-dashboard-query` 实现 Phase 10A 首页 Dashboard 和综合查询。Phase 10B 报表/Excel、10C 附件/通知和 10D 尚未实现。各阶段历史记录不能替代当前验证；Phase 10A 本轮结果见 [docs/phase10a-verification.md](docs/phase10a-verification.md)。
+公司内部物资、库存、设备及生命周期管理系统。当前源码覆盖 Phase 0～9、Phase 10A，并在 `feature/phase10b-reports-excel` 实现 Phase 10B 业务报表与 Excel 导出。Phase 10C 附件/通知和 10D 尚未实现。各阶段历史记录不能替代当前验证；Phase 10B 结果见 [docs/phase10b-verification.md](docs/phase10b-verification.md)。
 
 ## 技术栈
 
@@ -96,3 +96,7 @@ docs/      编码规范、参考索引和数据库蓝图
 ## Phase 10A 首页与综合查询
 
 登录后首页调用 `GET /api/dashboard/summary` 展示当前账号可查看的统计、设备状态与近期业务动态。`/query` 页面调用 `GET /api/query`，统一搜索物资、设备、仓库、入库、出库、领用、盘点、维修、保修、换货；支持类型、状态、日期和分页。接口只读，沿用各模块既有查看权限及数据范围，没有新增 Migration，最高仍为 V17。统计口径与跳转限制见 [docs/dashboard-management.md](docs/dashboard-management.md) 和 [docs/global-query.md](docs/global-query.md)。
+
+## Phase 10B 业务报表与 Excel
+
+`/reports` 提供库存、入库、出库、领用、设备资产、盘点差异和维修/保修/换货报表。`GET /api/reports/{type}` 返回分页明细与同条件汇总，`GET /api/reports/{type}/export` 导出相同筛选范围的 `.xlsx`，最多 50,000 行。报表按现有资源查看权限及数据范围只读查询，没有新增 Migration，最高仍为 V17。口径见 [docs/report-management.md](docs/report-management.md)，导出格式见 [docs/excel-export.md](docs/excel-export.md)。

@@ -4,6 +4,7 @@ import LoginView from '../views/LoginView.vue'
 import AppLayout from '../layouts/AppLayout.vue'
 import DashboardView from '../views/DashboardView.vue'
 import GlobalQueryView from '../views/GlobalQueryView.vue'
+import ReportView from '../views/ReportView.vue'
 import SystemView from '../views/SystemView.vue'
 import ForbiddenView from '../views/ForbiddenView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
@@ -30,7 +31,7 @@ const router = createRouter({
   routes: [
     { path: '/login', component: LoginView, meta: { guest: true } },
     { path: '/', component: AppLayout, children: [
-      { path: '', component: DashboardView }, { path: 'query', component: GlobalQueryView }, { path: 'system', component: SystemView },
+      { path: '', component: DashboardView }, { path: 'query', component: GlobalQueryView }, { path: 'reports', component: ReportView }, { path: 'system', component: SystemView },
       { path: 'system/users', component: UserView, meta: { permission: 'system.user.view' } },
       { path: 'system/departments', component: DepartmentView, meta: { permission: 'system.department.view' } },
       { path: 'system/roles', component: RoleView, meta: { permission: 'system.role.view' } },

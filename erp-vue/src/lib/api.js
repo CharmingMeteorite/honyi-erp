@@ -16,7 +16,29 @@ export async function request(path, options = {}) {
   return payload?.data
 }
 function query(params) { const value = new URLSearchParams(); Object.entries(params).forEach(([key, item]) => { if (item !== undefined && item !== null && item !== '') value.set(key, item) }); return value.toString() }
+export async function downloadReport(type, params = {}) {
+  const headers = new Headers({ Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const token = localStorage.getItem('erp_access_token')
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  const response = await fetch(`${API_BASE_URL}/api/reports/${type}/export?${query(params)}`, { headers })
+  if (response.status === 401) window.dispatchEvent(new CustomEvent('erp:unauthorized'))
+  if (response.status === 403) window.dispatchEvent(new CustomEvent('erp:forbidden'))
+  if (!response.ok) {
+    let payload = null
+    try { payload = await response.json() } catch { payload = null }
+    throw new Error(payload?.message || `导出失败（${response.status}）`)
+  }
+  const objectUrl = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = `${{ STOCK: '库存', INBOUND: '入库', OUTBOUND: '出库', REQUISITION: '领用', DEVICE: '设备资产', STOCKTAKE: '盘点差异', SERVICE: '维修保修换货' }[type] || '业务'}报表_${new Date().toISOString().slice(0, 10)}.xlsx`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
+}
 export const api = {
+  report: (type, params = {}) => request(`/api/reports/${type}?${query(params)}`),
   dashboardSummary: () => request('/api/dashboard/summary'),
   globalQuery: (params = {}) => request(`/api/query?${query(params)}`),
   qrLabel: (type, id, generate = false) => request(`/api/assets/qr/${type}/${id}`, { method: generate ? 'POST' : 'GET' }),

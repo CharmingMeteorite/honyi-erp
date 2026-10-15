@@ -1,6 +1,6 @@
 # ERP 数据库蓝图
 
-本文档规划完整 ERP 的数据领域。当前源码与指定开发库已推进至 Phase 10A：V1～V3 为认证、组织权限和操作日志，V4 为物资主数据，V5～V7 为设备与历史，V8/V9 为仓库库存和期初库存，V10 为入出库，V11 为领用，V12/V13 为盘点，V14～V16 为维修、保修、换货及前向修正，V17 为二维码令牌和权限。Phase 10A 只读聚合现有表，未新增 V18，最高仍为 V17。2026-10-14 曾新建空 `erp` 库并按 Flyway 顺序迁移至 V13，随后按阶段前向迁移至 V17。调拨、借用、附件和报表等仍为规划。
+本文档规划完整 ERP 的数据领域。当前源码与指定开发库已推进至 Phase 10B：V1～V3 为认证、组织权限和操作日志，V4 为物资主数据，V5～V7 为设备与历史，V8/V9 为仓库库存和期初库存，V10 为入出库，V11 为领用，V12/V13 为盘点，V14～V16 为维修、保修、换货及前向修正，V17 为二维码令牌和权限。Phase 10A 与 10B 只读聚合现有表，未新增 V18，最高仍为 V17。2026-10-14 曾新建空 `erp` 库并按 Flyway 顺序迁移至 V13，随后按阶段前向迁移至 V17。调拨、借用和附件等仍为规划。
 
 ## 领域规划
 
@@ -155,3 +155,7 @@ Phase 6 的 14 项真实 MySQL 回归及前端 build 在 2026-09-20 通过。202
 Phase 10A 从 Phase 9 的 V17 基线开发，仅以 MyBatis 查询现有主数据、设备、仓库库存和各类单据表。未新增统计表、缓存、定时任务或 Migration；V1～V17 均保持不变。`GET /api/dashboard/summary` 按现有资源查看权限分别提供 Product/Device/仓库、可见库存、待办单据与近期业务动态；`GET /api/query` 将十类主记录统一排序、过滤和分页，关联明细用 `EXISTS` 匹配，避免一对多连接造成重复计数。设备与仓库库存分别统计，不把总资产数当库存量；库存取 `inv_stocks.quantity`，低库存阈值取 `md_products.safety_stock`。
 
 两个接口复用已落库的资源查看权限，没有新增权限数据。Product 沿用全局产品查看边界；Device 按所属部门或本人使用/保管过滤；仓库、库存、入出库、盘点按仓库部门过滤；领用按申请部门或本人创建过滤；维修、保修、换货按单据部门或本人申请过滤。本人范围不展示整仓库存。详见 [dashboard-management.md](dashboard-management.md)、[global-query.md](global-query.md)；本轮真实验证见 [phase10a-verification.md](phase10a-verification.md)。
+
+## Phase 10B 业务报表与导出
+
+以 `inv_stocks`、入出库/领用单据及明细、`asset_devices`、盘点明细和设备异常、维修/保修/换货单据为只读事实来源。七类报表复用原资源权限和 ALL/DEPARTMENT/SELF 范围。明细与汇总使用相同的 MyBatis 查询条件，`.xlsx` 导出重新执行相同查询并限制最多 50,000 行；不写业务表、不维护统计快照、不新增权限或 Migration，V1～V17 不变。具体字段、已确认差异与已执行数量口径见 [report-management.md](report-management.md)，导出格式见 [excel-export.md](excel-export.md)，本轮验证见 [phase10b-verification.md](phase10b-verification.md)。
