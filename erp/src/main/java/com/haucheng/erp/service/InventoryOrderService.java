@@ -29,6 +29,7 @@ public class InventoryOrderService {
     private final StockMapper stocks;
     private final InventoryScopeService scope;
     private final OperationLogService operationLog;
+    private final NotificationService notifications;
 
     public PageResult<InventoryOrderView> getPage(boolean inbound, Long warehouseId, String status, String keyword,
                                                   LocalDate fromDate, LocalDate toDate, Integer page, Integer size) {
@@ -141,6 +142,8 @@ public class InventoryOrderService {
         order.setExecutedAt(LocalDateTime.now());
         // 单据、库存、设备、历史、流水和审计一起提交；最后审计失败同样整体回滚。
         save(inbound, order, "EXECUTE", "执行完成 " + order.getOrderNo());
+        notifications.send(order.getCreatorUserId(), inbound ? "INBOUND" : "OUTBOUND", order.getId(),
+                inbound ? "入库已完成" : "出库已完成", order.getOrderNo());
         return getById(inbound, id);
     }
 

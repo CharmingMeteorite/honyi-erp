@@ -1,6 +1,6 @@
 # ERP 内部物资管理系统
 
-公司内部物资、库存、设备及生命周期管理系统。当前源码覆盖 Phase 0～9、Phase 10A，并在 `feature/phase10b-reports-excel` 实现 Phase 10B 业务报表与 Excel 导出。Phase 10C 附件/通知和 10D 尚未实现。各阶段历史记录不能替代当前验证；Phase 10B 结果见 [docs/phase10b-verification.md](docs/phase10b-verification.md)。
+公司内部物资、库存、设备及生命周期管理系统。当前源码覆盖 Phase 0～10B，并在 `feature/phase10c-attachments-notifications` 实现 Phase 10C 附件与站内通知。Phase 10D 尚未实现。各阶段历史记录不能替代当前验证；本轮结果见 [docs/phase10c-verification.md](docs/phase10c-verification.md)。
 
 ## 技术栈
 
@@ -10,7 +10,7 @@
 
 ## 开发环境
 
-需要 Java 17、Node.js 22+、npm 和 MySQL 8。当前恢复版本唯一指定开发库为 `192.168.1.247:3307/erp`，用户名 `root`；通过本地 `.env` 或进程环境设置 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`，不使用应用的默认本机连接。`.env` 已被 Git 忽略，不要提交真实密码或 Token 密钥。已有本地配置时保留原文件；新环境才从 `.env.example` 创建配置并填写指定连接。
+需要 Java 17、Node.js 22+、npm、MySQL 8，以及使用附件时可访问的私有 MinIO。当前恢复版本唯一指定开发库为 `192.168.1.247:3307/erp`，用户名 `root`；通过本地 `.env` 或进程环境设置 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`，不使用应用的默认本机连接。附件还需 `MINIO_ENDPOINT`、`MINIO_BUCKET`、`MINIO_ACCESS_KEY`、`MINIO_SECRET_KEY`。`.env` 已被 Git 忽略，不要提交真实密码或密钥。已有本地配置时保留原文件；新环境才从 `.env.example` 创建配置并填写指定连接。
 
 ```powershell
 Copy-Item .env.example .env
@@ -100,3 +100,7 @@ docs/      编码规范、参考索引和数据库蓝图
 ## Phase 10B 业务报表与 Excel
 
 `/reports` 提供库存、入库、出库、领用、设备资产、盘点差异和维修/保修/换货报表。`GET /api/reports/{type}` 返回分页明细与同条件汇总，`GET /api/reports/{type}/export` 导出相同筛选范围的 `.xlsx`，最多 50,000 行。报表按现有资源查看权限及数据范围只读查询，没有新增 Migration，最高仍为 V17。口径见 [docs/report-management.md](docs/report-management.md)，导出格式见 [docs/excel-export.md](docs/excel-export.md)。
+
+## Phase 10C 附件与站内通知
+
+`/api/attachments` 提供业务附件上传、列表、授权下载及删除；对象放在私有 MinIO bucket，元数据放在 MySQL。设备、物资、入出库、领用、盘点、维修、保修、换货现有页面的适当入口展示附件。`/notifications` 提供登录用户自己的持久化通知、未读数和已读操作；入出库完成、领用发放，以及维修/保修/换货处理结果会触发通知。V18 新增附件与通知表和权限。接口与限制见 [docs/attachment-management.md](docs/attachment-management.md)、[docs/notification-management.md](docs/notification-management.md)。

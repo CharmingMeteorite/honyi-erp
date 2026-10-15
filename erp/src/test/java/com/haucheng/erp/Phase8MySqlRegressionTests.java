@@ -104,6 +104,7 @@ class Phase8MySqlRegressionTests {
         jdbc.update("DELETE FROM asset_device_history WHERE device_id IN (SELECT id FROM asset_devices WHERE product_id IN (?,?,?))", deviceProduct, otherProduct, quantityProduct);
         jdbc.update("DELETE FROM asset_devices WHERE product_id IN (?,?,?)", deviceProduct, otherProduct, quantityProduct);
         jdbc.update("DELETE FROM sys_operation_log WHERE operator_user_id=?", operator);
+        jdbc.update("DELETE FROM sys_notifications WHERE recipient_user_id=?", operator);
         jdbc.update("DELETE FROM sys_access_token WHERE user_id=?", operator);
         jdbc.update("DELETE FROM sys_user_role WHERE user_id=?", operator);
         jdbc.update("DELETE FROM sys_user WHERE id=?", operator);
@@ -139,6 +140,7 @@ class Phase8MySqlRegressionTests {
         assertEquals("REPAIRING",state(device)); assertNull(warehouse(device)); assertEquals(0,stock());
         AssetServiceActionRequest a=action(repairing); a.setRemark("已更换接口"); a.setNotes("返库后观察");
         AssetServiceOrderView completed=service.action("repair",repairing.getId(),"complete",a);
+        assertEquals(1,count("SELECT COUNT(*) FROM sys_notifications WHERE recipient_user_id=? AND business_type='REPAIR' AND business_id=?",operator,completed.getId()));
         assertEquals("IN_STOCK",state(device)); assertEquals(warehouse,warehouse(device));assertEquals(1,stock());
         assertEquals("已更换接口",completed.getRemark()); assertEquals("返库后观察",completed.getNotes());
         assertEquals(List.of("REPAIR_OUT","REPAIR_RETURN"),completed.getLedgers().stream().map(StockLedgerView::getBusinessType).toList());

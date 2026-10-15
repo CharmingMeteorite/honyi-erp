@@ -9,7 +9,7 @@ export async function request(path, options = {}) {
   let payload = null
   try { payload = await response.json() } catch { payload = null }
   if (response.status === 401) window.dispatchEvent(new CustomEvent('erp:unauthorized'))
-  if (response.status === 403) window.dispatchEvent(new CustomEvent('erp:forbidden'))
+  if (response.status === 403 && !options.suppressForbiddenRedirect) window.dispatchEvent(new CustomEvent('erp:forbidden'))
   if (!response.ok || (payload && payload.code !== 0)) {
     const error = new Error(payload?.message || `请求失败（${response.status}）`); error.status = response.status; error.code = payload?.code; throw error
   }
@@ -37,7 +37,33 @@ export async function downloadReport(type, params = {}) {
   link.remove()
   setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
 }
+export async function downloadAttachment(id, preview = false) {
+  const headers = new Headers({ Accept: '*/*' })
+  const token = localStorage.getItem('erp_access_token')
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  const response = await fetch(`${API_BASE_URL}/api/attachments/${id}/download?preview=${preview}`, { headers })
+  if (response.status === 401) window.dispatchEvent(new CustomEvent('erp:unauthorized'))
+  if (response.status === 403) window.dispatchEvent(new CustomEvent('erp:forbidden'))
+  if (!response.ok) {
+    let payload = null
+    try { payload = await response.json() } catch { payload = null }
+    throw new Error(payload?.message || `下载失败（${response.status}）`)
+  }
+  return response.blob()
+}
 export const api = {
+  attachments: (businessType, businessId) => request(`/api/attachments?${query({ businessType, businessId })}`),
+  uploadAttachment: (businessType, businessId, file, clientRequestId) => {
+    const form = new FormData()
+    form.set('businessType', businessType); form.set('businessId', businessId)
+    form.set('clientRequestId', clientRequestId); form.set('file', file)
+    return request('/api/attachments', { method: 'POST', body: form })
+  },
+  deleteAttachment: (id) => request(`/api/attachments/${id}`, { method: 'DELETE' }),
+  notifications: (params = {}) => request(`/api/notifications?${query(params)}`),
+  notificationCount: () => request('/api/notifications/unread-count'),
+  readNotification: (id) => request(`/api/notifications/${id}/read`, { method: 'PATCH' }),
+  readAllNotifications: () => request('/api/notifications/read-all', { method: 'POST' }),
   report: (type, params = {}) => request(`/api/reports/${type}?${query(params)}`),
   dashboardSummary: () => request('/api/dashboard/summary'),
   globalQuery: (params = {}) => request(`/api/query?${query(params)}`),

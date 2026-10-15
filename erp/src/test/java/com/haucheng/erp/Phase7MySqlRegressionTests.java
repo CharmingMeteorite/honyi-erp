@@ -95,6 +95,7 @@ class Phase7MySqlRegressionTests {
         jdbc.update("DELETE FROM asset_device_history WHERE device_id IN (SELECT id FROM asset_devices WHERE product_id IN (?,?))", deviceProduct, otherProduct);
         jdbc.update("DELETE FROM asset_devices WHERE product_id IN (?,?)", deviceProduct, otherProduct);
         jdbc.update("DELETE FROM sys_operation_log WHERE operator_user_id=?", operator);
+        jdbc.update("DELETE FROM sys_notifications WHERE recipient_user_id=?", operator);
         jdbc.update("DELETE FROM sys_access_token WHERE user_id=?", operator);
         jdbc.update("DELETE FROM sys_user_role WHERE user_id=?", operator);
         jdbc.update("DELETE FROM sys_user WHERE id=?", operator);

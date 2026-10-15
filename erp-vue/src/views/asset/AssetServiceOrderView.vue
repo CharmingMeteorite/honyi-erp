@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../../lib/api.js'
 import { authState, hasPermission } from '../../lib/auth.js'
+import AttachmentPanel from '../../components/AttachmentPanel.vue'
 
 const props = defineProps({ kind: { type: String, required: true } })
 const titles = { repair: '设备维修', warranty: '保修申请', exchange: '换货处理' }
@@ -196,6 +197,7 @@ onMounted(load)
         <h3>操作记录</h3><el-table :data="detail.logs"><el-table-column prop="operationType" label="动作" /><el-table-column prop="detail" label="说明" min-width="240" /><el-table-column prop="operatorName" label="操作人" /><el-table-column prop="requestId" label="request_id" /><el-table-column prop="createdAt" label="时间" /></el-table>
         <h3>设备历史</h3><el-table :data="detail.deviceHistory"><el-table-column prop="fromStatus" label="原状态" /><el-table-column prop="toStatus" label="新状态" /><el-table-column prop="businessNo" label="业务编号" min-width="220" /><el-table-column prop="detail" label="说明" min-width="200" /><el-table-column prop="createdAt" label="时间" /></el-table>
         <template v-if="kind === 'exchange'"><h3>新设备历史</h3><el-table :data="detail.newDeviceHistory"><el-table-column prop="fromStatus" label="原状态" /><el-table-column prop="toStatus" label="新状态" /><el-table-column prop="detail" label="说明" /><el-table-column prop="createdAt" label="时间" /></el-table></template>
+        <AttachmentPanel :business-type="kind.toUpperCase()" :business-id="detail.id" />
       </template>
     </el-dialog>
   </div>

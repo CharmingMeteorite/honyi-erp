@@ -30,6 +30,7 @@ public class RequisitionService {
     private final InventoryOptionService options;
     private final InventoryScopeService scope;
     private final OperationLogService operationLog;
+    private final NotificationService notifications;
 
     public PageResult<RequisitionView> getPage(Long warehouseId, String status, String keyword,
                                                   LocalDate fromDate, LocalDate toDate, Integer page, Integer size) {
@@ -158,6 +159,7 @@ public class RequisitionService {
         order.setExecutedAt(LocalDateTime.now());
         // 单据、库存、设备、历史、流水和审计一起提交；最后审计失败同样整体回滚。
         save(order, "ISSUE", "仓库发放 " + order.getOrderNo());
+        notifications.send(order.getCreatorUserId(), "REQUISITION", order.getId(), "领用已发放", order.getOrderNo());
         return getById(id);
     }
 

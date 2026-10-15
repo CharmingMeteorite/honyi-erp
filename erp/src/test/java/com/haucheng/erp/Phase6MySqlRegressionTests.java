@@ -95,6 +95,7 @@ class Phase6MySqlRegressionTests {
         jdbc.update("DELETE FROM asset_devices WHERE product_id IN (SELECT id FROM md_products WHERE category_id=?)", category);
         jdbc.update("DELETE FROM wh_warehouses WHERE warehouse_code LIKE ?", prefix + "%");
         jdbc.update("DELETE FROM sys_operation_log WHERE operator_user_id IN (SELECT id FROM sys_user WHERE username LIKE ?)", prefix + "%");
+        jdbc.update("DELETE FROM sys_notifications WHERE recipient_user_id IN (SELECT id FROM sys_user WHERE username LIKE ?)", prefix + "%");
         jdbc.update("DELETE FROM sys_access_token WHERE user_id=?", operator);
         jdbc.update("DELETE FROM sys_user_role WHERE user_id=?", operator);
         jdbc.update("DELETE FROM sys_user WHERE username LIKE ?", prefix + "%");
@@ -129,6 +130,8 @@ class Phase6MySqlRegressionTests {
         var accepted = requisitions.approve(resubmitted.getId(), action(resubmitted), true);
         assertQuantity(warehouse, quantityProduct, "10"); assertTrue(accepted.getLedgers().isEmpty());
         var completed = issue(accepted);
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM sys_notifications WHERE recipient_user_id=? AND business_type='REQUISITION' AND business_id=?", Integer.class,
+                operator, completed.getId()));
         assertQuantity(warehouse, quantityProduct, "6.75");
         assertEquals("COMPLETED", completed.getStatus()); assertNotNull(completed.getExecutedAt());
         assertEquals(1, completed.getLedgers().size());

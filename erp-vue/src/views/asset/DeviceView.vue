@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../../lib/api.js'
 import { hasPermission } from '../../lib/auth.js'
+import AttachmentPanel from '../../components/AttachmentPanel.vue'
 
 const rows = ref([])
 const route = useRoute()
@@ -275,6 +276,7 @@ onMounted(async () => {
           <div class="muted">操作人：{{ item.operatorName || '-' }}</div>
         </el-timeline-item>
       </el-timeline>
+      <AttachmentPanel business-type="DEVICE" :business-id="detail.id" />
     </template>
   </el-dialog>
 </template>

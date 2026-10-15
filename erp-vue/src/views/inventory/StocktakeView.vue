@@ -1,4 +1,5 @@
 <script setup>
+import AttachmentPanel from '../../components/AttachmentPanel.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, View, Edit, Check, Close } from '@element-plus/icons-vue'
@@ -167,6 +168,7 @@ onMounted(() => { load(); searchWarehouses() })
         <el-table :data="detail.ledgers" empty-text="暂无调整流水"><el-table-column prop="productId" label="物资ID" /><el-table-column prop="direction" label="方向" /><el-table-column prop="quantity" label="数量" /><el-table-column prop="beforeQuantity" label="调整前" /><el-table-column prop="afterQuantity" label="调整后" /><el-table-column prop="requestId" label="请求追踪" min-width="180" /></el-table>
         <h3>操作历史</h3>
         <el-table :data="detail.logs"><el-table-column prop="operationType" label="动作" min-width="130" /><el-table-column prop="operatorName" label="操作人" /><el-table-column prop="createdAt" label="时间" min-width="180" /><el-table-column prop="requestId" label="请求追踪" min-width="180" /></el-table>
+        <AttachmentPanel business-type="STOCKTAKE" :business-id="detail.id" />
         <div class="detail-actions">
           <el-button v-if="detail.status === 'DRAFT' && can('submit')" :loading="acting" @click="action(detail, 'submit')">提交盘点</el-button>
           <el-button v-if="detail.status === 'COUNTED' && can('confirm')" type="primary" :icon="Check" :disabled="blocking || uncounted" :loading="acting" @click="action(detail, 'confirm')">确认差异</el-button>

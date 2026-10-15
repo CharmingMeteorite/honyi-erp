@@ -1,6 +1,6 @@
 # ERP 数据库蓝图
 
-本文档规划完整 ERP 的数据领域。当前源码与指定开发库已推进至 Phase 10B：V1～V3 为认证、组织权限和操作日志，V4 为物资主数据，V5～V7 为设备与历史，V8/V9 为仓库库存和期初库存，V10 为入出库，V11 为领用，V12/V13 为盘点，V14～V16 为维修、保修、换货及前向修正，V17 为二维码令牌和权限。Phase 10A 与 10B 只读聚合现有表，未新增 V18，最高仍为 V17。2026-10-14 曾新建空 `erp` 库并按 Flyway 顺序迁移至 V13，随后按阶段前向迁移至 V17。调拨、借用和附件等仍为规划。
+本文档规划完整 ERP 的数据领域。当前源码与指定开发库已推进至 Phase 10C：V1～V3 为认证、组织权限和操作日志，V4 为物资主数据，V5～V7 为设备与历史，V8/V9 为仓库库存和期初库存，V10 为入出库，V11 为领用，V12/V13 为盘点，V14～V16 为维修、保修、换货及前向修正，V17 为二维码令牌和权限，V18 为附件元数据、站内通知和权限。Phase 10A 与 10B 没有新增 Migration。Phase 10C 迁移前已核验 V17 与 checksum，并备份指定数据库。调拨、借用等仍为规划。
 
 ## 领域规划
 
@@ -13,7 +13,7 @@
 - 盘点：盘点单、盘点明细
 - 服务：保修、维修、产品调换
 - 审批：流程实例、任务
-- 支撑：二维码与浏览器标签打印已实现；附件、报表仍为规划
+- 支撑：二维码与浏览器标签打印、业务报表与 Excel、附件和站内通知已实现
 
 ## 规划表
 
@@ -37,7 +37,7 @@ service_warranties, service_repairs
 exchange_orders, exchange_relations
 workflow_instances, workflow_tasks
 sys_qr_tokens  # V17 已实现
-files, print_jobs  # 仍为规划
+sys_attachments, sys_notifications  # V18 已实现；打印任务未建表
 ```
 
 ## 核心模型
@@ -159,3 +159,9 @@ Phase 10A 从 Phase 9 的 V17 基线开发，仅以 MyBatis 查询现有主数�
 ## Phase 10B 业务报表与导出
 
 以 `inv_stocks`、入出库/领用单据及明细、`asset_devices`、盘点明细和设备异常、维修/保修/换货单据为只读事实来源。七类报表复用原资源权限和 ALL/DEPARTMENT/SELF 范围。明细与汇总使用相同的 MyBatis 查询条件，`.xlsx` 导出重新执行相同查询并限制最多 50,000 行；不写业务表、不维护统计快照、不新增权限或 Migration，V1～V17 不变。具体字段、已确认差异与已执行数量口径见 [report-management.md](report-management.md)，导出格式见 [excel-export.md](excel-export.md)，本轮验证见 [phase10b-verification.md](phase10b-verification.md)。
+
+## Phase 10C 附件与站内通知
+
+V18 新增 `sys_attachments` 和 `sys_notifications`。附件表保存明确的业务类型与 ID、显示名称、随机对象键、大小、实际校验的内容类型、SHA-256、上传人与请求防重标识，以及 READY/DELETE_PENDING/DELETED 状态；业务类型与状态有 CHECK，对象键和用户请求标识有唯一约束，业务关联有查询索引。实际文件存入私有 MinIO bucket，不把 URL 或文件内容存入 MySQL。多业务类型关联通过后端逐一读取业务详情并验证原权限及数据范围，不引入不可验证的伪外键。
+
+通知表保存接收人、唯一业务事件键、类型、标题、短摘要、业务定位字段和已读时间；接收人是真实 `sys_user` 外键，`(event_key,recipient_user_id)` 唯一避免重复通知，收件箱索引支持按本人、已读状态与时间查询。新增附件查看/上传/删除和通知查看四项权限，并为现有角色按职责授权。V1～V17 不改写；本轮真实迁移与约束核验见 [phase10c-verification.md](phase10c-verification.md)。

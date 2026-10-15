@@ -26,12 +26,14 @@ import RequisitionView from '../views/inventory/RequisitionView.vue'
 import StocktakeView from '../views/inventory/StocktakeView.vue'
 import AssetServiceOrderView from '../views/asset/AssetServiceOrderView.vue'
 import QrView from '../views/asset/QrView.vue'
+import NotificationView from '../views/NotificationView.vue'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', component: LoginView, meta: { guest: true } },
     { path: '/', component: AppLayout, children: [
       { path: '', component: DashboardView }, { path: 'query', component: GlobalQueryView }, { path: 'reports', component: ReportView }, { path: 'system', component: SystemView },
+      { path: 'notifications', component: NotificationView, meta: { permission: 'notification.view' } },
       { path: 'system/users', component: UserView, meta: { permission: 'system.user.view' } },
       { path: 'system/departments', component: DepartmentView, meta: { permission: 'system.department.view' } },
       { path: 'system/roles', component: RoleView, meta: { permission: 'system.role.view' } },

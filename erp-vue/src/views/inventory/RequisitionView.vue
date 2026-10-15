@@ -1,4 +1,5 @@
 <script setup>
+import AttachmentPanel from '../../components/AttachmentPanel.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../../lib/api.js'
@@ -155,6 +156,7 @@ onMounted(() => { load(); searchWarehouses() })
         <h3>发放结果</h3><el-empty v-if="!detail.ledgers.length" description="尚未发放，没有库存变化" :image-size="60" />
         <el-table v-else :data="detail.ledgers"><el-table-column prop="productId" label="产品ID" /><el-table-column prop="direction" label="方向" /><el-table-column prop="quantity" label="数量" /><el-table-column v-if="detail.ledgers.some(l => l.beforeQuantity !== null)" prop="beforeQuantity" label="变更前" /><el-table-column v-if="detail.ledgers.some(l => l.afterQuantity !== null)" prop="afterQuantity" label="变更后" /><el-table-column prop="operatorName" label="发放人" /><el-table-column prop="requestId" label="请求追踪" min-width="200" /></el-table>
       </template>
+      <AttachmentPanel v-if="detail?.id" business-type="REQUISITION" :business-id="detail.id" />
       <template #footer>
         <el-button @click="visible = false">关闭</el-button><el-button v-if="!readOnly" type="primary" :loading="saving" @click="save">保存草稿</el-button>
         <template v-if="readOnly && detail"><el-button v-if="detail.status === 'DRAFT' && own(detail) && can('submit')" :loading="acting" @click="act(detail, 'submit')">提交审批</el-button><template v-if="detail.status === 'PENDING_APPROVAL' && can('approve')"><el-button :loading="acting" @click="act(detail, 'reject')">拒绝</el-button><el-button type="primary" :loading="acting" @click="act(detail, 'approve')">通过</el-button></template><el-button v-if="detail.status === 'APPROVED' && can('issue')" type="primary" :loading="acting" @click="act(detail, 'issue')">发放</el-button></template>

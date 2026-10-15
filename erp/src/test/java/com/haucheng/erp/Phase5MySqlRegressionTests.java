@@ -90,6 +90,7 @@ class Phase5MySqlRegressionTests {
         jdbc.update("DELETE FROM asset_devices WHERE product_id IN (SELECT id FROM md_products WHERE category_id=?)", category);
         jdbc.update("DELETE FROM wh_warehouses WHERE warehouse_code LIKE ?", prefix + "%");
         jdbc.update("DELETE FROM sys_operation_log WHERE operator_user_id=?", operator);
+        jdbc.update("DELETE FROM sys_notifications WHERE recipient_user_id=?", operator);
         jdbc.update("DELETE FROM sys_access_token WHERE user_id=?", operator);
         jdbc.update("DELETE FROM sys_user_role WHERE user_id=?", operator);
         jdbc.update("DELETE FROM sys_user WHERE id=?", operator);
@@ -127,6 +128,8 @@ class Phase5MySqlRegressionTests {
             assertEquals(0, accepted.getLedgers().size());
             var completed = execute(accepted, inbound);
             assertEquals("COMPLETED", completed.getStatus());
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM sys_notifications WHERE recipient_user_id=? AND business_type=? AND business_id=?", Integer.class,
+                    operator, inbound ? "INBOUND" : "OUTBOUND", completed.getId()));
             assertNotNull(completed.getExecutedAt()); assertEquals(operator, completed.getExecutorUserId());
             assertEquals(1, completed.getLedgers().size());
             var ledger = completed.getLedgers().get(0);

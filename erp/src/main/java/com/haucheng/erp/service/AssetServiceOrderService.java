@@ -29,6 +29,7 @@ public class AssetServiceOrderService {
     private final InventoryScopeService inventoryScope;
     private final InventoryOrderMapper inventoryOrders;
     private final OperationLogService audit;
+    private final NotificationService notifications;
 
     public PageResult<AssetServiceOrderView> getPage(String kind, String keyword, String status, Long deviceId,
             Long productId, Long applicantId, LocalDate fromDate, LocalDate toDate, Integer page, Integer size) {
@@ -159,6 +160,12 @@ public class AssetServiceOrderService {
         if (request.getResult()!=null) order.setResult(trim(request.getResult()));
         save(kind,order,action.toUpperCase(Locale.ROOT));
         orders.insertRequest(request.getClientRequestId(),kind,id,action,hash,currentId());
+        if (Set.of("COMPLETED","UNREPAIRABLE","REJECTED").contains(order.getStatus())
+                && Set.of("complete","unrepairable","reject","execute").contains(action)) {
+            notifications.send(order.getApplicantUserId(), kind.toUpperCase(Locale.ROOT), id,
+                    switch(kind) { case "repair" -> "维修处理结果"; case "warranty" -> "保修处理结果"; default -> "换货处理结果"; },
+                    order.getOrderNo() + " · " + order.getStatus());
+        }
         return detail(kind,id);
     }
 
