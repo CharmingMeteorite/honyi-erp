@@ -221,6 +221,8 @@ class Phase6MySqlRegressionTests {
         var accepted = accepted(request(line(quantityProduct, "2"), line(deviceProduct, "1", device)));
         doThrow(new IllegalStateException("phase6 audit failure")).when(audit).insert(any(), eq("REQUISITION_ISSUE"), anyString(), anyString(), any());
         assertThrows(IllegalStateException.class, () -> issue(accepted));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM sys_notifications WHERE recipient_user_id=? AND business_type='REQUISITION' AND business_id=?", Integer.class,
+                operator, accepted.getId()));
         reset(audit);
         var result = requisitions.getById(accepted.getId());
         assertEquals("APPROVED", result.getStatus()); assertEquals(accepted.getVersion(), result.getVersion());

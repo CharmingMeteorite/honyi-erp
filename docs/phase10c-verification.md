@@ -12,10 +12,10 @@ MinIO 真实健康接口返回 200，当前本地私有 bucket 配置已连接�
 
 | 项目 | 实际结果 |
 | --- | --- |
-| Phase 10C 定向 MySQL + MinIO 测试 | PASS，7 项，0 失败、错误或跳过 |
+| Phase 10C 定向 MySQL + MinIO 测试 | PASS，9 项，0 失败、错误或跳过 |
 | Phase 4～10B 真实 MySQL 回归 | PASS；完整 Maven 测试覆盖现有全部阶段 |
-| 完整 `mvnw.cmd test` | PASS，176 项，0 失败、错误或跳过 |
-| 未跳过测试的 `mvnw.cmd package` | PASS，再次执行 176 项，生成 Spring Boot jar |
+| 完整 `mvnw.cmd test` | 最终 PASS，178 项，0 失败、错误或跳过 |
+| 未跳过测试的 `mvnw.cmd package` | 最终 PASS，再次执行 178 项，生成 Spring Boot jar |
 | 前端 `npm run build` | PASS，Vite 8.2.2；现有主包超过 500 kB 提示仍在 |
 | Flyway validate/info | PASS，V1～V18 全 Success，最高 V18 |
 | lint | NOT CONFIGURED，前端 `package.json` 无 lint 脚本 |
@@ -23,7 +23,7 @@ MinIO 真实健康接口返回 200，当前本地私有 bucket 配置已连接�
 
 新增测试以 `P10C_`＋UUID 生成用户、部门、产品、设备和附件。事务内夹具回滚并由 `@AfterTransaction` 检查；唯一一次提交型测试按精确 ID 清理自己的对象、附件、审计和基础数据。最终只读 SQL 核查 `sys_attachments`、`sys_notifications` 皆为 0 行，`P10C_` 与本轮残留的 `P7_` 用户、部门、物资、设备、仓库均为 0。旧 Phase 4～10B 测试的清理逻辑按 fixture ID/前缀限定，无业务表 TRUNCATE。第一轮全量回归发现两次 Phase 7 测试在清理用户时受新增通知外键阻止；修复 Phase 7 夹具清理顺序，并只对那两次已确认 ID 的残留记录做事务内定向清理。一次后续 package 遇到既有 Phase 9 随机二维码 SVG 解码的 `ZXing NotFoundException`；同一测试单独重跑通过，随后全量 package 重跑 176 项全部通过。未跳过或改弱该断言；该历史测试在随机内容下可能偶发失败，需后续独立跟踪。
 
-附件测试覆盖文件名路径穿越、空文件、超限、HTML/伪造 MIME、跨部门与 SELF 授权、重复请求、实际下载响应头、私有 bucket、删除与回滚补偿、未配置存储时的明确失败；通知测试覆盖本人隔离、未读数、单条/批量已读、重复事件和停用用户；原有 Phase 5/6/8 回归新增成功业务触发通知的断言。浏览器端上传进度目前以忙碌状态呈现，未做字节百分比。没有病毒扫描与后台对象一致性修复服务；极端进程崩溃可能留下待人工核查的对象或 `DELETE_PENDING` 元数据，这一状态在附件列表可见并支持重试删除。
+附件测试覆盖文件名路径穿越、空文件、超限、HTML/伪造 MIME、跨部门与 SELF 授权、重复请求、实际下载响应头、私有 bucket、删除与回滚补偿、元数据写入失败后对象补偿、对象删除失败后可见的 `DELETE_PENDING` 及重试、未配置存储时的明确失败；通知测试覆盖本人隔离、未读数、单条/批量已读、重复事件和停用用户；原有 Phase 5/6/8 回归新增成功业务触发通知及业务回滚不留通知的断言。浏览器端上传进度目前以忙碌状态呈现，未做字节百分比。没有病毒扫描与后台对象一致性修复服务；极端进程崩溃可能留下待人工核查的对象或 `DELETE_PENDING` 元数据，这一状态在附件列表可见并支持重试删除。
 
 ## 交付检查
 

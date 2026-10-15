@@ -242,6 +242,8 @@ class Phase5MySqlRegressionTests {
             String type = inbound ? "INBOUND_EXECUTE" : "OUTBOUND_EXECUTE";
             doThrow(new IllegalStateException("intentional rollback regression")).when(audit).insert(any(), eq(type), anyString(), anyString(), nullable(String.class));
             assertThrows(IllegalStateException.class, () -> execute(accepted, inbound)); reset(audit);
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM sys_notifications WHERE recipient_user_id=? AND business_type=? AND business_id=?", Integer.class,
+                    operator, inbound ? "INBOUND" : "OUTBOUND", accepted.getId()));
             assertEquals("APPROVED", orders.getById(inbound, accepted.getId()).getStatus());
             assertEquals(0, orders.getById(inbound, accepted.getId()).getLedgers().size());
             assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM asset_device_history WHERE business_no=?", Integer.class, accepted.getOrderNo()));

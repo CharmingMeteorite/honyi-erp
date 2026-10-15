@@ -4,6 +4,7 @@ import com.haucheng.erp.auth.CurrentUserContext;
 import com.haucheng.erp.controller.AttachmentController;
 import com.haucheng.erp.config.RequestIdFilter;
 import com.haucheng.erp.exception.BusinessException;
+import com.haucheng.erp.mapper.AttachmentMapper;
 import com.haucheng.erp.service.AttachmentService;
 import com.haucheng.erp.service.MinioObjectStorageService;
 import com.haucheng.erp.service.NotificationService;
@@ -40,7 +41,11 @@ import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
+import org.mockito.ArgumentCaptor;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -57,7 +62,8 @@ class Phase10CMySqlRegressionTests {
     @Autowired JdbcTemplate jdbc;
     @Autowired AttachmentService attachments;
     @Autowired NotificationService notifications;
-    @Autowired MinioObjectStorageService storage;
+    @MockitoSpyBean MinioObjectStorageService storage;
+    @MockitoSpyBean AttachmentMapper attachmentMapper;
     @Autowired AttachmentController controller;
     @Autowired MockMvc mvc;
     private String prefix;
@@ -204,6 +210,42 @@ class Phase10CMySqlRegressionTests {
 
     @Test @EnabledIfEnvironmentVariable(named="ERP_MINIO_TEST",matches="true")
     @Transactional(propagation=Propagation.NOT_SUPPORTED)
+    void metadataFailureCompensatesUploadedObject() {
+        String object=null;
+        try {
+            doThrow(new IllegalStateException("test metadata failure")).when(attachmentMapper).insert(any());
+            assertThrows(IllegalStateException.class,()->attachments.upload("DEVICE",device,prefix,
+                    file(prefix+".txt","text/plain","content")));
+            ArgumentCaptor<String> key=ArgumentCaptor.forClass(String.class);
+            verify(storage).put(key.capture(),any(byte[].class),eq("text/plain"));
+            object=key.getValue();
+            assertThrows(BusinessException.class,()->storage.get(key.getValue(),7));
+            assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM sys_attachments WHERE display_name=?",Integer.class,prefix+".txt"));
+        } finally { cleanupCommitted(null,object); }
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named="ERP_MINIO_TEST",matches="true")
+    @Transactional(propagation=Propagation.NOT_SUPPORTED)
+    void objectDeletionFailureStaysVisibleForRetry() {
+        Long attachmentId=null;
+        String key=null;
+        try {
+            attachmentId=attachments.upload("DEVICE",device,prefix,file(prefix+".txt","text/plain","content")).id();
+            key=jdbc.queryForObject("SELECT object_key FROM sys_attachments WHERE id=?",String.class,attachmentId);
+            doThrow(BusinessException.conflict("test deletion failure")).doCallRealMethod().when(storage).remove(key);
+            attachments.delete(attachmentId);
+            assertEquals("DELETE_PENDING",jdbc.queryForObject("SELECT status FROM sys_attachments WHERE id=?",String.class,attachmentId));
+            assertEquals(1,attachments.list("DEVICE",device).size());
+            assertArrayEquals("content".getBytes(StandardCharsets.UTF_8),storage.get(key,7));
+            attachments.delete(attachmentId);
+            assertEquals("DELETED",jdbc.queryForObject("SELECT status FROM sys_attachments WHERE id=?",String.class,attachmentId));
+            String deletedKey=key;
+            assertThrows(BusinessException.class,()->storage.get(deletedKey,7));
+        } finally { cleanupCommitted(attachmentId,key); }
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named="ERP_MINIO_TEST",matches="true")
+    @Transactional(propagation=Propagation.NOT_SUPPORTED)
     void committedAttachmentDeleteRemovesObjectAndKeepsAudit() {
         Long attachmentId=null;
         String key=null;
@@ -221,20 +263,22 @@ class Phase10CMySqlRegressionTests {
             String deletedKey=key;
             assertThrows(BusinessException.class,()->storage.get(deletedKey,7));
             assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM sys_operation_log WHERE operator_user_id=? AND operation_type LIKE 'ATTACHMENT_%'",Integer.class,user));
-        } finally {
-            if (key != null) storage.remove(key);
-            if (attachmentId != null) jdbc.update("DELETE FROM sys_attachments WHERE id=?",attachmentId);
-            jdbc.update("DELETE FROM sys_operation_log WHERE operator_user_id=?",user);
-            jdbc.update("DELETE FROM asset_devices WHERE id=?",device);
-            jdbc.update("DELETE FROM md_products WHERE id=?",product);
-            jdbc.update("DELETE FROM md_categories WHERE id=?",category);
-            jdbc.update("DELETE FROM md_brands WHERE id=?",brand);
-            jdbc.update("DELETE FROM md_units WHERE id=?",unit);
-            jdbc.update("DELETE FROM sys_user WHERE id IN (?,?)",user,otherUser);
-            jdbc.update("DELETE FROM sys_department WHERE id IN (?,?)",department,otherDepartment);
-        }
+        } finally { cleanupCommitted(attachmentId,key); }
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM sys_attachments WHERE display_name LIKE ?",Integer.class,prefix+"%"));
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM sys_user WHERE username LIKE ?",Integer.class,prefix+"%"));
+    }
+
+    private void cleanupCommitted(Long attachmentId,String key) {
+        if (key != null) storage.remove(key);
+        if (attachmentId != null) jdbc.update("DELETE FROM sys_attachments WHERE id=?",attachmentId);
+        jdbc.update("DELETE FROM sys_operation_log WHERE operator_user_id=?",user);
+        jdbc.update("DELETE FROM asset_devices WHERE id=?",device);
+        jdbc.update("DELETE FROM md_products WHERE id=?",product);
+        jdbc.update("DELETE FROM md_categories WHERE id=?",category);
+        jdbc.update("DELETE FROM md_brands WHERE id=?",brand);
+        jdbc.update("DELETE FROM md_units WHERE id=?",unit);
+        jdbc.update("DELETE FROM sys_user WHERE id IN (?,?)",user,otherUser);
+        jdbc.update("DELETE FROM sys_department WHERE id IN (?,?)",department,otherDepartment);
     }
 
     private MockMultipartFile file(String name,String type,String value) {
