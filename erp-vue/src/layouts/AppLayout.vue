@@ -115,7 +115,7 @@ onUnmounted(() => window.removeEventListener('erp:notifications-changed', refres
 <template>
   <el-container class="app-shell">
     <button class="sidebar-shade" :class="{ 'is-visible': mobileOpen }" aria-label="关闭导航" @click="mobileOpen = false" />
-    <el-aside :width="collapsed ? '72px' : '234px'" class="app-aside" :class="{ 'is-collapsed': collapsed, 'is-mobile-open': mobileOpen }">
+    <el-aside :width="collapsed ? '72px' : '248px'" class="app-aside" :class="{ 'is-collapsed': collapsed, 'is-mobile-open': mobileOpen }">
       <div class="aside-inner">
         <RouterLink to="/" class="brand" aria-label="弘毅 ERP，返回运营概览">
           <img v-if="collapsed && !mobileOpen" :src="brandMark" class="brand-mark-image" alt="" />
