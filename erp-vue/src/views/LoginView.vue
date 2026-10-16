@@ -45,7 +45,7 @@ async function submit() {
 .login-page { min-height: 100vh; display: grid; place-items: center; padding: 28px; background: #f1f4f9; }
 .login-layout { display: grid; grid-template-columns: minmax(380px, 1fr) minmax(380px, .9fr); width: min(980px, 100%); min-height: 570px; overflow: hidden; background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 20px 60px rgba(29, 49, 85, .09); }
 .login-intro { display: flex; flex-direction: column; justify-content: space-between; padding: 45px 50px; color: #fff; background: #113e9d; }
-.login-brand { width: max-content; max-width: calc(100% + 50px); display: flex; align-items: center; gap: 6px; margin-left: -50px; padding: 8px 14px 8px 50px; border-radius: 0 8px 8px 0; background: #fff; }
+.login-brand { width: max-content; max-width: 100%; display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; background: #fff; }
 .login-brand img { display: block; width: 226px; max-width: calc(100% - 42px); height: auto; }
 .login-brand span { flex: none; color: #8995a7; font-size: 20px; font-weight: 650; }
 .login-brand em { font-style: italic; }
@@ -62,5 +62,5 @@ async function submit() {
 .login-form-wrap :deep(.el-form-item__label) { font-weight: 650; }
 .login-submit { width: 100%; margin-top: 10px; }
 .login-help { display: block; margin-top: 27px; color: var(--text-muted); font-size: 12px; text-align: center; }
-@media (max-width: 760px) { .login-page { padding: 14px; } .login-layout { grid-template-columns: 1fr; min-height: 0; } .login-intro { padding: 24px; min-height: 120px; } .login-brand { margin-left: -24px; padding-left: 24px; } .login-brand img { width: min(226px, calc(100vw - 120px)); } .login-intro-copy, .login-intro small { display: none; } .login-form-area { padding: 45px 24px; } }
+@media (max-width: 760px) { .login-page { padding: 14px; } .login-layout { grid-template-columns: 1fr; min-height: 0; } .login-intro { padding: 24px; min-height: 120px; } .login-brand img { width: min(226px, calc(100vw - 140px)); } .login-intro-copy, .login-intro small { display: none; } .login-form-area { padding: 45px 24px; } }
 </style>
