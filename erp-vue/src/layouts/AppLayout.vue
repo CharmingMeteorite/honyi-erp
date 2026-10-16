@@ -10,6 +10,8 @@ import {
 } from '@element-plus/icons-vue'
 import { authState, logout, hasPermission } from '../lib/auth.js'
 import { api } from '../lib/api.js'
+import brandLogo from '../assets/hongyi-logo.png'
+import brandMark from '../assets/hongyi-mark.png'
 
 const router = useRouter()
 const route = useRoute()
@@ -115,9 +117,9 @@ onUnmounted(() => window.removeEventListener('erp:notifications-changed', refres
     <button class="sidebar-shade" :class="{ 'is-visible': mobileOpen }" aria-label="关闭导航" @click="mobileOpen = false" />
     <el-aside :width="collapsed ? '72px' : '234px'" class="app-aside" :class="{ 'is-collapsed': collapsed, 'is-mobile-open': mobileOpen }">
       <div class="aside-inner">
-        <RouterLink to="/" class="brand" aria-label="返回运营概览">
-          <span class="brand-mark">H</span>
-          <span v-if="!collapsed || mobileOpen" class="brand-copy"><strong>鸿易 ERP</strong><small>企业运营工作台</small></span>
+        <RouterLink to="/" class="brand" aria-label="弘毅 ERP，返回运营概览">
+          <img v-if="collapsed && !mobileOpen" :src="brandMark" class="brand-mark-image" alt="" />
+          <span v-else class="brand-identity"><img :src="brandLogo" class="brand-wordmark" alt="弘毅人工智能" /><span class="brand-suffix">·erp</span></span>
         </RouterLink>
         <nav class="aside-scroll" aria-label="主导航">
           <div v-for="group in visibleGroups" :key="group.key" class="nav-group" :class="{ 'nav-workspace': group.key === 'workspace' }">

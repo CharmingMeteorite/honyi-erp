@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { api } from '../lib/api.js'
 import { setSession } from '../lib/auth.js'
+import brandLogo from '../assets/hongyi-logo.png'
 
 const router = useRouter()
 const loading = ref(false)
@@ -20,7 +21,7 @@ async function submit() {
   <main class="login-page">
     <div class="login-layout">
       <section class="login-intro">
-        <div class="login-brand"><span class="login-mark">H</span><span>鸿易 ERP</span></div>
+        <div class="login-brand"><img :src="brandLogo" alt="弘毅人工智能" /><span>·erp</span></div>
         <div class="login-intro-copy"><span>企业运营工作台</span><h1>让物资、库存与设备<br />管理更加清晰。</h1><p>统一管理业务资料、仓储流程、设备资产与运营报表。</p></div>
         <small>内部业务系统 · 请使用已分配的账号登录</small>
       </section>
@@ -44,8 +45,9 @@ async function submit() {
 .login-page { min-height: 100vh; display: grid; place-items: center; padding: 28px; background: #f1f4f9; }
 .login-layout { display: grid; grid-template-columns: minmax(380px, 1fr) minmax(380px, .9fr); width: min(980px, 100%); min-height: 570px; overflow: hidden; background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 20px 60px rgba(29, 49, 85, .09); }
 .login-intro { display: flex; flex-direction: column; justify-content: space-between; padding: 45px 50px; color: #fff; background: #113e9d; }
-.login-brand { display: flex; align-items: center; gap: 11px; font-size: 20px; font-weight: 750; }
-.login-mark { width: 37px; height: 37px; display: grid; place-items: center; border-radius: 9px; color: #113e9d; background: #fff; font-weight: 800; }
+.login-brand { width: max-content; max-width: 100%; display: flex; align-items: center; gap: 5px; padding: 8px 10px; border-radius: 9px; background: #fff; }
+.login-brand img { display: block; width: 210px; max-width: calc(100% - 37px); height: auto; }
+.login-brand span { flex: none; color: #8995a7; font-size: 17px; font-weight: 650; }
 .login-intro-copy > span { color: #b7ceff; font-size: 12px; letter-spacing: .12em; }
 .login-intro-copy h1 { margin: 17px 0; font-size: clamp(26px, 3vw, 37px); line-height: 1.36; letter-spacing: -.035em; }
 .login-intro-copy p { max-width: 350px; color: #d4e0ff; font-size: 14px; line-height: 1.8; }
