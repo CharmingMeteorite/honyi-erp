@@ -47,7 +47,7 @@ async function submit() {
 .login-intro { display: flex; flex-direction: column; justify-content: space-between; padding: 45px 50px; color: #fff; background: #113e9d; }
 .login-brand { width: max-content; max-width: 100%; display: flex; align-items: center; gap: 5px; padding: 8px 10px; border-radius: 9px; background: #fff; }
 .login-brand img { display: block; width: 210px; max-width: calc(100% - 37px); height: auto; }
-.login-brand span { flex: none; color: #8995a7; font-size: 17px; font-weight: 650; }
+.login-brand span { flex: none; color: #8995a7; font-size: 22px; font-weight: 650; }
 .login-brand em { font-style: italic; }
 .login-intro-copy > span { color: #b7ceff; font-size: 12px; letter-spacing: .12em; }
 .login-intro-copy h1 { margin: 17px 0; font-size: clamp(26px, 3vw, 37px); line-height: 1.36; letter-spacing: -.035em; }

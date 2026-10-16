@@ -6,7 +6,7 @@
 .brand { height: 72px; flex: none; display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--line); text-decoration: none; }
 .brand-identity { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .brand-wordmark { display: block; width: 170px; height: auto; max-width: calc(100% - 32px); }
-.brand-suffix { flex: none; color: #8995a7; font-size: 14px; font-weight: 650; white-space: nowrap; }
+.brand-suffix { flex: none; color: #8995a7; font-size: 18px; font-weight: 650; white-space: nowrap; }
 .brand-suffix em { font-style: italic; }
 .brand-mark-image { display: block; width: 36px; height: 36px; object-fit: contain; }
 .aside-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 10px 10px 14px; scrollbar-width: thin; }
