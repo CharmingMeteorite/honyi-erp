@@ -119,7 +119,7 @@ onUnmounted(() => window.removeEventListener('erp:notifications-changed', refres
       <div class="aside-inner">
         <RouterLink to="/" class="brand" aria-label="弘毅 ERP，返回运营概览">
           <img v-if="collapsed && !mobileOpen" :src="brandMark" class="brand-mark-image" alt="" />
-          <span v-else class="brand-identity"><img :src="brandLogo" class="brand-wordmark" alt="弘毅人工智能" /><span class="brand-suffix">·erp</span></span>
+          <span v-else class="brand-identity"><img :src="brandLogo" class="brand-wordmark" alt="弘毅人工智能" /><span class="brand-suffix">·<em>Erp</em></span></span>
         </RouterLink>
         <nav class="aside-scroll" aria-label="主导航">
           <div v-for="group in visibleGroups" :key="group.key" class="nav-group" :class="{ 'nav-workspace': group.key === 'workspace' }">
