@@ -24,3 +24,7 @@
 ## 尚未执行及限制
 
 无已确认的服务器、域名、证书、维护窗口、生产数据库或隔离恢复目标，因此未执行远程/生产部署、TLS、正式 MySQL 恢复、MinIO 对象备份或恢复演练。当前机器未安装 `mc` 客户端，也未确认 MinIO 宿主存储位置；对象备份需要存储管理员提供机制。没有病毒扫描、后台对象一致性修复、日志平台或告警平台。前端 chunk 体积提示仍在，浏览器 E2E 未执行。所有环境结果仅代表上述指定开发库、MinIO 和本机 JAR 烟雾测试。
+
+## 2026-10-16 外部配置交付复验
+
+针对容器日志中的 `jdbcUrl, ${DB_URL}` 启动失败，发布脚本现从 Git 忽略的本地 `.env` 生成独立的 `config/application.properties`。该文件包含真实凭据，仅供手动安全上传，不进入 JAR 或 Git。实测仅在工作目录放置此文件时，应用未加载数据库配置而启动失败；通过 `SPRING_CONFIG_ADDITIONAL_LOCATION=file:./config/application.properties` 和 `SPRING_PROFILES_ACTIVE=prod` 显式指定后，Java 17 JAR 启动成功，日志显示 `prod`、Flyway 成功校验 18 项 Migration，`/health/ready` 返回 200，MySQL 与 MinIO 均为 UP。使用等效 Java 启动参数也通过。只停止本次烟雾测试进程；尚未连接或改动用户服务器。

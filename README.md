@@ -42,7 +42,7 @@ npm run dev
 
 ## 单 JAR 手动交付
 
-在 Windows PowerShell 中用 Java 17、Node.js 22.18+ 运行 `./scripts/build-release.ps1`。脚本执行 `npm ci`、前端 build、指定开发库 Flyway 校验、完整 Maven 测试与 `clean package`，再核查 JAR 内容、SHA-256，将可上传的 JAR 放入 Git 忽略的 `.local/releases/`。生产配置使用外部环境变量；配置模板为 [.env.release.example](.env.release.example)。手动上传、启动、健康检查、备份和恢复步骤见 [部署指南](docs/deployment-guide.md) 与 [运维手册](docs/operations-runbook.md)。本仓库不自动远程部署服务器。
+在 Windows PowerShell 中用 Java 17、Node.js 22.18+ 运行 `./scripts/build-release.ps1`。脚本执行 `npm ci`、前端 build、指定开发库 Flyway 校验、完整 Maven 测试与 `clean package`，再核查 JAR 内容、SHA-256，将可上传的 JAR 放入 Git 忽略的 `.local/releases/`，并从本地配置生成独立的 `config/application.properties`。该文件含真实凭据，不能打进 JAR 或提交到 Git；部署时须显式指定其位置及 `prod` profile。配置模板为 [.env.release.example](.env.release.example)。手动上传、启动、健康检查、备份和恢复步骤见 [部署指南](docs/deployment-guide.md) 与 [运维手册](docs/operations-runbook.md)。本仓库不自动远程部署服务器。
 
 ## Phase 0 / Phase 1 基础 API
 

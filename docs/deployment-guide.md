@@ -11,13 +11,37 @@ $env:JAVA_HOME = 'C:\path\to\jdk-17'
 .\scripts\build-release.ps1
 ```
 
-脚本先 `npm ci`、`npm run build`，再运行 Flyway validate、完整 Maven test 和 `mvnw.cmd clean package`（package 再运行测试），检查 JAR 可执行入口、后端类、依赖及前端 HTML/JS/CSS。失败即停止；发布文件仅放在 Git 忽略的 `.local/releases/`，输出绝对路径、字节数、Git 短提交与 SHA-256。不可直接跳过前端构建后使用旧 `target/`。前端大 chunk 警告不影响构建，但应列入后续性能优化。
+脚本先 `npm ci`、`npm run build`，再运行 Flyway validate、完整 Maven test 和 `mvnw.cmd clean package`（package 再运行测试），检查 JAR 可执行入口、后端类、依赖及前端 HTML/JS/CSS。失败即停止；发布文件仅放在 Git 忽略的 `.local/releases/`，输出绝对路径、字节数、Git 短提交与 SHA-256。脚本还根据当前本地配置生成 `.local/releases/config/application.properties`，其中含真实数据库和 MinIO 凭据，必须当作密钥文件保管；它不会进入 JAR 或 Git。不可直接跳过前端构建后使用旧 `target/`。前端大 chunk 警告不影响构建，但应列入后续性能优化。
 
 ## 上传前核对与配置
 
 目标服务器、域名、TLS、发布窗口尚未指定；本仓库不执行远程连接或部署。手动确认目标 Java 17、可用端口、MySQL/MinIO 的实际目标与权限、ERP 专属私有 bucket、磁盘空间和上版 JAR/配置留存。对发布文件再次核对路径、大小、SHA-256、Git 提交；上传后在服务器重新计算 SHA-256 并比较。不要把本机 `.env` 原样带到其他环境。
 
-配置项见根目录 `.env.release.example`，该文件只有占位值。真正配置必须放在工作区外且仅部署账号可读。必填：`DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`MINIO_ENDPOINT`、`MINIO_BUCKET`、`MINIO_ACCESS_KEY`、`MINIO_SECRET_KEY`；常用：`SPRING_PROFILES_ACTIVE=prod`、`SERVER_PORT`、`ERP_LOG_DIR`、`DB_CONNECTION_TIMEOUT_MS`。保留 `FLYWAY_ENABLED=true`；管理账号种子变量正常上线应为空。Spring Boot 不会自动读取根目录 `.env`，必须注入进程环境或使用受限的外部 Spring 配置。不要把服务端密钥设成 `VITE_*` 前端变量。
+配置项见根目录 `.env.release.example`，该文件只有占位值。目标服务器上的真实配置必须放在代码目录外且仅部署账号可读；本机构建生成的配置仅在 Git 忽略的 `.local/releases/config/` 暂存。必填：`DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`MINIO_ENDPOINT`、`MINIO_BUCKET`、`MINIO_ACCESS_KEY`、`MINIO_SECRET_KEY`；常用：`SPRING_PROFILES_ACTIVE=prod`、`SERVER_PORT`、`ERP_LOG_DIR`、`DB_CONNECTION_TIMEOUT_MS`。保留 `FLYWAY_ENABLED=true`；管理账号种子变量正常上线应为空。Spring Boot 不会自动读取根目录 `.env`，必须注入进程环境或使用受限的外部 Spring 配置。不要把服务端密钥设成 `VITE_*` 前端变量。
+
+若服务器把 JAR 作为 `/app/erp.jar` 放进现有 `erp` 容器，把本地生成的 `config/application.properties` 单独上传到服务器受限目录，并**只读挂载**为容器内 `/app/config/application.properties`。还须显式设置配置文件位置及 `prod` profile；实测仅把文件放在工作目录下的 `config/` 并不能让该 JAR 正确加载它。现有服务的 Compose 配置可按实际部署文件增加以下内容：
+
+```yaml
+services:
+  erp:
+    volumes:
+      - /实际服务器安全路径/application.properties:/app/config/application.properties:ro
+    environment:
+      SPRING_CONFIG_ADDITIONAL_LOCATION: file:/app/config/application.properties
+      SPRING_PROFILES_ACTIVE: prod
+```
+
+这只是现有 ERP 容器的配置示例，不创建 MySQL/MinIO 容器。若 Compose 已设置 `SPRING_PROFILES_ACTIVE=dev`，须将其改为 `prod`；不要保留相互冲突的设置。上传前确认生成文件里的数据库和 bucket 正是该服务器应连接的目标；本地文件来自指定开发库，不能未经核对就当作生产配置。修改挂载后须重建**该 ERP 服务容器**，仅重启旧容器不会改变挂载。启动日志应显示 `prod` profile，并应有 Flyway V18 校验成功记录；随后检查 `/health/ready`。不要把配置文件复制进镜像、JAR 或公开目录，也不要用会输出文件内容的命令排查。
+
+非容器场景可直接指定外部文件，不依赖当前工作目录。例如先把文件复制到受限目录，再用 Java 17 运行：
+
+```powershell
+& "$env:JAVA_HOME\bin\java.exe" -jar 'C:\erp\releases\erp.jar' --spring.config.additional-location=file:C:/erp/secure/application.properties --spring.profiles.active=prod
+```
+
+```sh
+java -jar /opt/erp/releases/erp.jar --spring.config.additional-location=file:/etc/erp/application.properties --spring.profiles.active=prod
+```
 
 Windows 手动前台启动示例。先把 `.env.release.example` 中的占位值替换成真实目标配置，保存到仓库外的 `C:\erp\secure\erp.env`，仅授予部署账号读取权限；以下命令只给当前 PowerShell 进程及其子进程注入变量，不打印值：
 

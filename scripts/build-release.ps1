@@ -13,6 +13,12 @@ function Invoke-Checked([string]$name, [scriptblock]$action) {
     if ($LASTEXITCODE -ne 0) { throw "$name failed (exit $LASTEXITCODE)" }
 }
 
+function ConvertTo-PropertyValue([string]$value) {
+    if ($value -match '[\r\n]') { throw 'Runtime configuration contains a multiline value' }
+    $slash = [string][char]92
+    return $value.Replace($slash, $slash + $slash).Replace(' ', $slash + ' ').Replace("`t", $slash + 't')
+}
+
 if (-not $env:JAVA_HOME -or -not (Test-Path (Join-Path $env:JAVA_HOME 'bin/java.exe'))) {
     throw 'Set JAVA_HOME to an installed Java 17 JDK before building.'
 }
@@ -103,6 +109,16 @@ try {
     if ($manifestText -notmatch 'Main-Class: org\.springframework\.boot\.loader\.launch\.JarLauncher') {
         throw 'JAR does not have the Spring Boot executable entry point'
     }
+    $applicationEntry = $archive.GetEntry('BOOT-INF/classes/application.properties')
+    if (-not $applicationEntry) { throw 'JAR application.properties is missing' }
+    $reader = [System.IO.StreamReader]::new($applicationEntry.Open())
+    try { $applicationText = $reader.ReadToEnd() } finally { $reader.Dispose() }
+    foreach ($key in @('DB_PASSWORD', 'MINIO_SECRET_KEY')) {
+        $secret = [Environment]::GetEnvironmentVariable($key, 'Process')
+        if ($secret.Length -ge 6 -and $applicationText.Contains($secret)) {
+            throw "JAR application.properties unexpectedly contains $key"
+        }
+    }
 } finally { $archive.Dispose() }
 $commit = (git -C $root rev-parse --short=12 HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Git commit is unavailable' }
@@ -111,7 +127,31 @@ $output = Join-Path $release "$($jar.BaseName)-$commit.jar"
 Copy-Item -LiteralPath $jar.FullName -Destination $output -Force
 $published = Get-Item -LiteralPath $output
 $sha = (Get-FileHash -LiteralPath $output -Algorithm SHA256).Hash
+
+# Keep this file outside the archive; it contains live credentials and is Git-ignored.
+# The service must point SPRING_CONFIG_ADDITIONAL_LOCATION at the deployed file.
+$runtimeDirectory = Join-Path $release 'config'
+New-Item -ItemType Directory -Force -Path $runtimeDirectory | Out-Null
+$runtimeConfig = Join-Path $runtimeDirectory 'application.properties'
+$runtimeProperties = [ordered]@{
+    'server.port' = '8080'
+    'spring.datasource.url' = $env:DB_URL
+    'spring.datasource.username' = $env:DB_USERNAME
+    'spring.datasource.password' = $env:DB_PASSWORD
+    'erp.minio.endpoint' = $env:MINIO_ENDPOINT
+    'erp.minio.bucket' = $env:MINIO_BUCKET
+    'erp.minio.access-key' = $env:MINIO_ACCESS_KEY
+    'erp.minio.secret-key' = $env:MINIO_SECRET_KEY
+    'spring.flyway.enabled' = 'true'
+}
+$runtimeLines = foreach ($property in $runtimeProperties.GetEnumerator()) {
+    "$($property.Key)=$(ConvertTo-PropertyValue ([string]$property.Value))"
+}
+[System.IO.File]::WriteAllLines($runtimeConfig, [string[]]$runtimeLines, [System.Text.UTF8Encoding]::new($false))
 Write-Host "Release JAR: $($published.FullName)"
 Write-Host "Size: $($published.Length) bytes"
 Write-Host "Git: $commit"
 Write-Host "SHA-256: $sha"
+Write-Host "External runtime config (contains secrets): $runtimeConfig"
+Write-Host 'In the container, mount it read-only at /app/config/application.properties.'
+Write-Host 'Set SPRING_CONFIG_ADDITIONAL_LOCATION=file:/app/config/application.properties and SPRING_PROFILES_ACTIVE=prod.'

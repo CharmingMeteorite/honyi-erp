@@ -9,6 +9,7 @@
 | 现象 | 只读排查顺序与安全处理 |
 | --- | --- |
 | JAR 不启动或 Java 报版本错 | `java -version` 应为 17；`jar tf <jar>` 确认入口和静态资源；核对 SHA-256，换用正确 JDK/JAR。 |
+| 日志出现 `Driver ... does not accept jdbcUrl, ${DB_URL}` | 应用没有得到有效数据库配置。核对容器内 `/app/config/application.properties` 是否为只读文件，并核对 `SPRING_CONFIG_ADDITIONAL_LOCATION=file:/app/config/application.properties` 是否传入 ERP 进程；再确认启动日志为 `prod` profile。不要在日志中输出配置文件内容或密码。 |
 | 端口冲突 | 查询该端口进程及归属；确认是否本 ERP 旧实例，只停止经确认的实例，或选择已批准端口。 |
 | 数据库拒绝连接、权限或 Flyway 失败 | 核对目标地址、账号授权和网络；查看启动日志中的错误类型；只读检查 `flyway_schema_history`、`flyway:validate/info`。禁止 repair、清库、改 checksum。 |
 | `/health/ready` 为 503 | 观察 `database` / `objectStorage` 哪项 DOWN；数据库查网络/账号，MinIO 查 endpoint、私有 ERP bucket 及授权。健康检查不负责建 bucket。 |
