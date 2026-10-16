@@ -15,11 +15,17 @@ $env:JAVA_HOME = 'C:\path\to\jdk-17'
 
 ## 上传前核对与配置
 
-目标服务器、域名、TLS、发布窗口尚未指定；本仓库不执行远程连接或部署。手动确认目标 Java 17、可用端口、MySQL/MinIO 的实际目标与权限、ERP 专属私有 bucket、磁盘空间和上版 JAR/配置留存。对发布文件再次核对路径、大小、SHA-256、Git 提交；上传后在服务器重新计算 SHA-256 并比较。不要把本机 `.env` 原样带到其他环境。
+当前已获授权验证的目标是 `192.168.1.247` 上的 1Panel `erp` 容器，主机端口 8090 映射到容器 8080；域名、TLS 和正式发布窗口仍未确认。本仓库不包含自动远程部署脚本。手动确认目标 Java 17、可用端口、MySQL/MinIO 的实际目标与权限、ERP 专属私有 bucket、磁盘空间和上版 JAR/配置留存。对发布文件再次核对路径、大小、SHA-256、Git 提交；上传后在服务器重新计算 SHA-256 并比较。不要把本机 `.env` 原样带到其他环境。
 
-配置项见根目录 `.env.release.example`，该文件只有占位值。目标服务器上的真实配置必须放在代码目录外且仅部署账号可读；本机构建生成的配置仅在 Git 忽略的 `.local/releases/config/` 暂存。必填：`DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`MINIO_ENDPOINT`、`MINIO_BUCKET`、`MINIO_ACCESS_KEY`、`MINIO_SECRET_KEY`；常用：`SPRING_PROFILES_ACTIVE=prod`、`SERVER_PORT`、`ERP_LOG_DIR`、`DB_CONNECTION_TIMEOUT_MS`。保留 `FLYWAY_ENABLED=true`；管理账号种子变量正常上线应为空。Spring Boot 不会自动读取根目录 `.env`，必须注入进程环境或使用受限的外部 Spring 配置。不要把服务端密钥设成 `VITE_*` 前端变量。
+配置项见根目录 `.env.release.example`，该文件只有占位值。目标服务器上的真实配置必须置于 JAR 外的非公开、受限目录，且仅部署账号可读；本机构建生成的配置仅在 Git 忽略的 `.local/releases/config/` 暂存。必填：`DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`MINIO_ENDPOINT`、`MINIO_BUCKET`、`MINIO_ACCESS_KEY`、`MINIO_SECRET_KEY`；常用：`SPRING_PROFILES_ACTIVE=prod`、`SERVER_PORT`、`ERP_LOG_DIR`、`DB_CONNECTION_TIMEOUT_MS`。保留 `FLYWAY_ENABLED=true`；管理账号种子变量正常上线应为空。Spring Boot 不会自动读取根目录 `.env`，必须注入进程环境或使用受限的外部 Spring 配置。不要把服务端密钥设成 `VITE_*` 前端变量。
 
-若服务器把 JAR 作为 `/app/erp.jar` 放进现有 `erp` 容器，把本地生成的 `config/application.properties` 单独上传到服务器受限目录，并**只读挂载**为容器内 `/app/config/application.properties`。还须显式设置配置文件位置及 `prod` profile；实测仅把文件放在工作目录下的 `config/` 并不能让该 JAR 正确加载它。现有服务的 Compose 配置可按实际部署文件增加以下内容：
+当前 1Panel 容器已把 `/home/hongyi/erp` 挂载为 `/app`，因此配置文件放在宿主机 `/home/hongyi/erp/config/application.properties` 即可由容器内 `/app/config/application.properties` 读取。宿主机 `config/` 权限为 700，文件权限为 600。1Panel 的 `/opt/1panel/runtime/java/erp/run.sh` 从 `/.env` 读取 `EXEC_SCRIPT`；当前在 `/opt/1panel/runtime/java/erp/.env` 中使用以下**不含密钥**的启动命令，无须为此修改 Compose 挂载：
+
+```sh
+EXEC_SCRIPT="java -jar erp.jar --spring.config.additional-location=file:/app/config/application.properties --spring.profiles.active=prod"
+```
+
+变更 1Panel 的启动设置前先备份原 `.env`；若以后通过 1Panel 界面重新生成运行配置，应检查这些启动参数是否仍在。实测仅把文件放在工作目录下的 `config/` 并不能让该 JAR 正确加载它。其他已有容器若只挂载 JAR，可把配置文件单独只读挂载到 `/app/config/application.properties`，并设置：
 
 ```yaml
 services:
@@ -31,7 +37,7 @@ services:
       SPRING_PROFILES_ACTIVE: prod
 ```
 
-这只是现有 ERP 容器的配置示例，不创建 MySQL/MinIO 容器。若 Compose 已设置 `SPRING_PROFILES_ACTIVE=dev`，须将其改为 `prod`；不要保留相互冲突的设置。上传前确认生成文件里的数据库和 bucket 正是该服务器应连接的目标；本地文件来自指定开发库，不能未经核对就当作生产配置。修改挂载后须重建**该 ERP 服务容器**，仅重启旧容器不会改变挂载。启动日志应显示 `prod` profile，并应有 Flyway V18 校验成功记录；随后检查 `/health/ready`。不要把配置文件复制进镜像、JAR 或公开目录，也不要用会输出文件内容的命令排查。
+这个 Compose 片段是其他容器的示例，不创建 MySQL/MinIO 容器。若 Compose 已设置 `SPRING_PROFILES_ACTIVE=dev`，须将其改为 `prod`；不要保留相互冲突的设置。上传前确认生成文件里的数据库和 bucket 正是该服务器应连接的目标；本地文件来自指定开发库，不能未经核对就当作生产配置。若新增 Compose 挂载，须重建**该 ERP 服务容器**，仅重启旧容器不会改变挂载。启动日志应显示 `prod` profile，并应有 Flyway V18 校验成功记录；随后检查 `/health/ready`。不要把配置文件复制进镜像、JAR 或公开目录，也不要用会输出文件内容的命令排查。
 
 非容器场景可直接指定外部文件，不依赖当前工作目录。例如先把文件复制到受限目录，再用 Java 17 运行：
 

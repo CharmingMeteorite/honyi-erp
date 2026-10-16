@@ -23,8 +23,16 @@
 
 ## 尚未执行及限制
 
-无已确认的服务器、域名、证书、维护窗口、生产数据库或隔离恢复目标，因此未执行远程/生产部署、TLS、正式 MySQL 恢复、MinIO 对象备份或恢复演练。当前机器未安装 `mc` 客户端，也未确认 MinIO 宿主存储位置；对象备份需要存储管理员提供机制。没有病毒扫描、后台对象一致性修复、日志平台或告警平台。前端 chunk 体积提示仍在，浏览器 E2E 未执行。所有环境结果仅代表上述指定开发库、MinIO 和本机 JAR 烟雾测试。
+后续已按用户授权在现有 1Panel `erp` 容器部署，结果见下节。域名、证书、正式发布窗口及隔离恢复目标仍未确认，因此未执行 TLS、正式 MySQL 恢复、MinIO 对象备份或恢复演练。当前机器未安装 `mc` 客户端，也未确认 MinIO 宿主存储位置；对象备份需要存储管理员提供机制。没有病毒扫描、后台对象一致性修复、日志平台或告警平台。前端 chunk 体积提示仍在，浏览器 E2E 未执行。
 
 ## 2026-10-16 外部配置交付复验
 
-针对容器日志中的 `jdbcUrl, ${DB_URL}` 启动失败，发布脚本现从 Git 忽略的本地 `.env` 生成独立的 `config/application.properties`。该文件包含真实凭据，仅供手动安全上传，不进入 JAR 或 Git。实测仅在工作目录放置此文件时，应用未加载数据库配置而启动失败；通过 `SPRING_CONFIG_ADDITIONAL_LOCATION=file:./config/application.properties` 和 `SPRING_PROFILES_ACTIVE=prod` 显式指定后，Java 17 JAR 启动成功，日志显示 `prod`、Flyway 成功校验 18 项 Migration，`/health/ready` 返回 200，MySQL 与 MinIO 均为 UP。使用等效 Java 启动参数也通过。只停止本次烟雾测试进程；尚未连接或改动用户服务器。
+针对容器日志中的 `jdbcUrl, ${DB_URL}` 启动失败，发布脚本现从 Git 忽略的本地 `.env` 生成独立的 `config/application.properties`。该文件包含真实凭据，仅供手动安全上传，不进入 JAR 或 Git。实测仅在工作目录放置此文件时，应用未加载数据库配置而启动失败；通过 `SPRING_CONFIG_ADDITIONAL_LOCATION=file:./config/application.properties` 和 `SPRING_PROFILES_ACTIVE=prod` 显式指定后，Java 17 JAR 启动成功，日志显示 `prod`、Flyway 成功校验 18 项 Migration，`/health/ready` 返回 200，MySQL 与 MinIO 均为 UP。使用等效 Java 启动参数也通过。该轮本地烟雾测试只停止本次测试进程，尚未操作用户服务器。
+
+## 2026-10-16 获授权的 1Panel 实机部署
+
+用户随后明确授权连接 `192.168.1.247` 并操作 `~/erp` 容器。本次检查确认现有 1Panel `erp` 容器原先已因缺少 `DB_URL` 退出，镜像为 `1panel/java:17`，宿主机 8090 映射至容器 8080，`/home/hongyi/erp` 挂载至 `/app`。没有重建 MySQL、MinIO 或其他服务。
+
+部署前将原 JAR 和原 1Panel `.env` 分别备份至 `/home/hongyi/erp-deploy-backups/erp.jar.20261016-102321`、`/home/hongyi/erp-deploy-backups/erp-env.20261016-102321`，通过字节比较确认备份与原文件一致。原版本本就启动失败，因此这两份备份只用于恢复原状态，不代表可用的运行版本。上传 `48f778259aba` 构建的 JAR 后，在宿主机和容器内核对 SHA-256 均为 `909A3B9C05CA5C6C827D5F5A2FA67F7D0E8F72F3CFCDAE3F6FFA8626D4789B13`；配置文件放于 `/home/hongyi/erp/config/application.properties`，目录/文件权限分别为 700/600。仅修改 1Panel ERP 的 `EXEC_SCRIPT`，显式指定外部配置文件和 `prod` profile。配置文件内容及凭据未进入 Git、JAR 或验证日志。
+
+启动现有 `erp` 容器后状态为 running、退出码 0、无重启。容器日志显示 `prod` profile、18 项 Flyway Migration 校验成功、schema 当前 V18、Tomcat 监听容器 8080。从宿主机访问 `127.0.0.1:8090/health/ready` 返回 200，database 和 objectStorage 均为 UP。从工作机访问 `192.168.1.247:8090`：首页、设备与报表深层路由、JS、CSS 均返回 200；`/health/live` 和 `/health/ready` 返回 200；未登录的 `/api/auth/me` 返回 401，未知 API 返回 404。没有执行真实用户登录、浏览器 E2E、业务写入或数据库/对象恢复演练；未修改业务数据或对象。
