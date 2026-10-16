@@ -42,6 +42,8 @@ const activeFilters = computed(() => [
 ].filter(item => item !== '' && item != null).length)
 const numericFields = new Set(['quantity', 'lockedQuantity', 'availableQuantity', 'safetyStock', 'snapshotQuantity',
   'countedQuantity', 'differenceQuantity', 'finalDifferenceQuantity', 'executedQuantity', 'deviceCount'])
+const codeFields = new Set(['number', 'productCode', 'deviceCode', 'newDeviceCode'])
+const nameFields = new Set(['productName'])
 const stateOptions = computed(() => {
   if (selected.value === 'STOCK') return ['ENABLED', 'DISABLED']
   if (selected.value === 'DEVICE') return ['IN_STOCK', 'IN_USE', 'BORROWED', 'REPAIRING', 'PENDING_EXCHANGE', 'SHIPPED', 'SCRAPPED', 'MISSING']
@@ -75,6 +77,7 @@ async function search() {
 }
 function reset() { selectReport(selected.value); search() }
 async function exportAll() {
+  if (exporting.value || loading.value) return
   exporting.value = true
   try { await downloadReport(selected.value, params()); ElMessage.success('报表已开始下载') }
   catch (e) { ElMessage.error(e.message) }
@@ -90,6 +93,8 @@ function value(row, field) {
   if (field === 'status') return queryStatusName(selected.value === 'SERVICE' ? row.serviceKind : selected.value, row.status)
   if (field === 'serviceKind') return serviceOptions.find(([kind]) => kind === row.serviceKind)?.[1] || row.serviceKind
   if (field === 'differenceDirection') return { SURPLUS: '盘盈', SHORTAGE: '盘亏', MATCH: '相符' }[row[field]] || '—'
+  if (field === 'productType') return { QUANTITY: '数量型', DEVICE: '设备型' }[row[field]] || row[field] || '—'
+  if (field === 'warrantyStatus') return { VALID: '保修期内', EXPIRED: '已过保', NOT_STARTED: '尚未开始', UNKNOWN: '日期不完整' }[row[field]] || row[field] || '—'
   return row[field] ?? '—'
 }
 </script>
@@ -99,15 +104,13 @@ function value(row, field) {
   <el-empty v-if="!availableReports.length" description="暂无可查看的报表" />
   <template v-else>
     <el-tabs :model-value="selected" @tab-change="selectReport"><el-tab-pane v-for="[type, label] in availableReports" :key="type" :name="type" :label="label" /></el-tabs>
-    <div class="report-filters">
+    <div class="report-filters business-filters">
       <div class="filter-caption"><strong>筛选条件</strong><span v-if="activeFilters">{{ activeFilters }} 项已生效</span></div>
       <el-input v-model="filter.keyword" maxlength="100" clearable placeholder="编号、产品、仓库或设备" class="wide" @keyup.enter="filter.page=1;search()" />
       <el-select v-if="selected==='SERVICE'" v-model="filter.serviceKind" clearable placeholder="业务类型"><el-option v-for="[kind, label] in availableServices" :key="kind" :value="kind" :label="label" /></el-select>
       <el-select v-model="filter.status" clearable placeholder="全部状态"><el-option v-for="state in stateOptions" :key="state" :value="state" :label="queryStatusName(selected, state)" /></el-select>
       <el-date-picker v-model="filter.dates" type="daterange" value-format="YYYY-MM-DD" start-placeholder="创建起始日" end-placeholder="创建结束日" />
-      <el-button type="primary" :icon="Search" :loading="loading" @click="filter.page=1;search()">查询</el-button>
-      <el-button :icon="RefreshRight" @click="reset">重置</el-button>
-      <el-button text @click="advancedOpen=!advancedOpen">{{ advancedOpen ? '收起高级筛选' : '高级筛选' }}{{ activeFilters ? ' · ' + activeFilters : '' }}</el-button>
+      <div class="filter-actions"><el-button type="primary" :icon="Search" :loading="loading" @click="filter.page=1;search()">查询报表</el-button><el-button :icon="RefreshRight" @click="reset">重置</el-button><el-button text @click="advancedOpen=!advancedOpen">{{ advancedOpen ? '收起高级筛选' : '高级筛选' }}{{ activeFilters ? ' · ' + activeFilters : '' }}</el-button></div>
       <div v-show="advancedOpen" class="advanced-filters">
       <el-select v-if="['STOCK', 'INBOUND', 'OUTBOUND', 'REQUISITION', 'STOCKTAKE', 'DEVICE'].includes(selected)" v-model="filter.productType" clearable placeholder="产品类型"><el-option value="QUANTITY" label="数量" /><el-option value="DEVICE" label="设备" /></el-select>
       <el-select v-if="selected==='STOCK'" v-model="filter.lowStock" clearable placeholder="低库存"><el-option :value="true" label="是" /><el-option :value="false" label="否" /></el-select>
@@ -123,8 +126,8 @@ function value(row, field) {
     <el-alert v-if="error" :title="error" type="error" show-icon class="report-error" />
     <div v-if="result" class="report-summary"><div><span>明细行数</span><strong>{{ summary.rowCount }}</strong></div><div v-if="['INBOUND','OUTBOUND','REQUISITION','STOCKTAKE','SERVICE'].includes(selected)"><span>单据数</span><strong>{{ summary.documentCount }}</strong></div><div v-if="['INBOUND','OUTBOUND','REQUISITION'].includes(selected)"><span>申请数量 / 已执行数量</span><strong>{{ summary.requestedQuantity }} / {{ summary.executedQuantity }}</strong></div><div v-if="selected==='STOCKTAKE'"><span>已确认差异合计</span><strong>{{ summary.finalDifferenceQuantity }}</strong></div><div v-if="selected==='STOCK'"><span>低库存行数</span><strong>{{ summary.lowStockCount }}</strong></div></div>
     <p v-if="result" class="report-note">数量按产品原单位展示；不同单位的合计不宜直接比较。草稿和待审批单据的执行数量为 0，未确认盘点的最终差异为空。</p>
-    <div class="report-result-heading"><div><strong>查询明细</strong><span>{{ result ? '共 ' + total + ' 条，当前显示 ' + displayRows.length + ' 条' : '选择报表与条件后查询' }}</span></div><el-button :icon="Download" :loading="exporting" @click="exportAll">导出全部筛选结果</el-button></div>
-    <el-table v-loading="loading" :data="displayRows" empty-text="暂无结果" class="report-table"><el-table-column v-for="[field, label] in columns" :key="field" :label="label" :min-width="numericFields.has(field) ? 120 : 150" :align="numericFields.has(field) ? 'right' : 'left'" show-overflow-tooltip><template #default="{ row }"><el-tag v-if="field === 'status'" effect="plain" :type="statusTagType(row.status)">{{ value(row, field) }}</el-tag><span v-else>{{ value(row, field) }}</span></template></el-table-column><el-table-column label="入口" fixed="right" width="80"><template #default="{ row }"><el-button link type="primary" @click="open(row)">查看</el-button></template></el-table-column></el-table>
+    <div class="report-result-heading"><div><strong>查询明细</strong><span>{{ result ? '共 ' + total + ' 条，当前显示 ' + displayRows.length + ' 条' : '选择报表与条件后查询' }}</span></div><el-button :icon="Download" :loading="exporting" :disabled="loading" @click="exportAll">导出全部筛选结果</el-button></div>
+    <el-table v-loading="loading" :data="displayRows" :empty-text="error ? '查询失败，请重试' : '当前条件下暂无结果'" class="report-table"><el-table-column v-for="[field, label] in columns" :key="field" :label="label" :min-width="numericFields.has(field) ? 120 : codeFields.has(field) ? 185 : 150" :align="numericFields.has(field) ? 'right' : 'left'" show-overflow-tooltip><template #default="{ row }"><el-tag v-if="field === 'status'" effect="plain" :type="statusTagType(row.status)">{{ value(row, field) }}</el-tag><el-tag v-else-if="field === 'lowStock'" size="small" effect="plain" :type="row.lowStock ? 'warning' : 'info'">{{ value(row, field) }}</el-tag><span v-else :class="{ 'record-code': codeFields.has(field), 'record-name': nameFields.has(field), 'number-cell': numericFields.has(field) }">{{ value(row, field) }}</span></template></el-table-column><el-table-column label="入口" fixed="right" width="80"><template #default="{ row }"><el-button link type="primary" @click="open(row)">查看</el-button></template></el-table-column></el-table>
     <el-pagination v-if="result && total" v-model:current-page="filter.page" v-model:page-size="filter.size" :total="total" :page-sizes="[10,20,50,100]" layout="total, sizes, prev, pager, next" class="report-pages" @current-change="search" @size-change="filter.page=1;search()" />
   </template>
 </template>
@@ -137,13 +140,13 @@ function value(row, field) {
 .report-filters .wide { width: 240px; }
 .report-filters .el-date-editor { width: 265px; }
 .advanced-filters { display: flex; flex-wrap: wrap; gap: 10px; width: 100%; padding-top: 12px; border-top: 1px solid var(--line); }
-.report-summary { display: flex; flex-wrap: wrap; gap: 0; margin: 16px 0; padding: 18px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); }
-.report-summary div { min-width: 150px; display: grid; gap: 6px; padding: 3px 22px; border-right: 1px solid var(--line); }
+.report-summary { display: flex; flex-wrap: wrap; gap: 0; margin: 14px 0 10px; padding: 13px 16px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); }
+.report-summary div { min-width: 150px; display: grid; gap: 4px; padding: 2px 20px; border-right: 1px solid var(--line); }
 .report-summary div:first-child { padding-left: 0; } .report-summary div:last-child { border: 0; }
 .report-summary span, .report-note, .report-result-heading span { color: var(--text-muted); font-size: 12px; }
-.report-summary strong { color: var(--text); font-size: 22px; font-variant-numeric: tabular-nums; }
-.report-note { margin: 0 0 16px; line-height: 1.6; }
-.report-result-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin: 22px 0 12px; }
+.report-summary strong { color: var(--text); font-size: 20px; font-variant-numeric: tabular-nums; }
+.report-note { margin: 0 0 12px; line-height: 1.6; }
+.report-result-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin: 16px 0 10px; }
 .report-result-heading > div { display: grid; gap: 4px; }
 .report-result-heading strong { font-size: 15px; }
 .report-pages { justify-content: flex-end; }

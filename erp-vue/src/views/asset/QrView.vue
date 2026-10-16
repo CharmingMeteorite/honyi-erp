@@ -31,6 +31,7 @@ let detecting = false
 const cameraSupported = typeof window !== 'undefined' && 'BarcodeDetector' in window && !!navigator.mediaDevices?.getUserMedia
 const canPrint = computed(() => hasPermission('asset.qr.print') && hasPermission('asset.qr.generate'))
 const canGenerate = computed(() => hasPermission('asset.qr.generate'))
+const deviceStatusNames = { IN_STOCK: '公司持有', IN_USE: '使用中', BORROWED: '借用中', REPAIRING: '维修中', PENDING_EXCHANGE: '待调换', SHIPPED: '已发货', SCRAPPED: '已报废', MISSING: '盘点缺失' }
 const maxQrSize = computed(() => Math.min(32, settings.height - settings.margin * 2, settings.width / 2 - settings.margin * 2))
 watch(maxQrSize, max => { if (settings.qr > max) settings.qr = max })
 const labelStyle = computed(() => ({
@@ -175,7 +176,7 @@ onBeforeUnmount(stopCamera)
           <el-descriptions-item label="SN">{{ scanned.device.serialNumber || '-' }}</el-descriptions-item>
           <el-descriptions-item label="MAC">{{ scanned.device.macAddress || '-' }}</el-descriptions-item>
           <el-descriptions-item label="资产号">{{ scanned.device.assetNo || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="状态">{{ scanned.device.status }}</el-descriptions-item>
+          <el-descriptions-item label="状态">{{ deviceStatusNames[scanned.device.status] || scanned.device.status }}</el-descriptions-item>
           <el-descriptions-item label="使用人">{{ scanned.device.userName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="部门">{{ scanned.device.departmentName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="仓库">{{ scanned.device.warehouseName || '-' }}</el-descriptions-item>
@@ -187,7 +188,7 @@ onBeforeUnmount(stopCamera)
             <el-descriptions-item label="名称">{{ scanned.product.productName }}</el-descriptions-item>
             <el-descriptions-item label="分类">{{ scanned.product.categoryName }}</el-descriptions-item>
             <el-descriptions-item label="品牌">{{ scanned.product.brandName }}</el-descriptions-item>
-            <el-descriptions-item label="类型">{{ scanned.product.productType }}</el-descriptions-item>
+            <el-descriptions-item label="类型">{{ scanned.product.productType === 'DEVICE' ? '设备型' : '数量型' }}</el-descriptions-item>
             <el-descriptions-item label="状态">{{ scanned.product.status ? '启用' : '停用' }}</el-descriptions-item>
           </el-descriptions>
           <el-table v-if="scanned.stocks?.list?.length" :data="scanned.stocks.list" class="stock-list">
@@ -201,8 +202,8 @@ onBeforeUnmount(stopCamera)
       <div class="label-controls screen-only">
         <div class="scan-intro"><strong>标签生成</strong><span>选取现有设备或物资后生成预览；打印内容与尺寸规则保持不变。</span></div>
         <el-segmented v-model="itemType" :options="[{ label: '设备标签', value: 'DEVICE' }, { label: '物资标签', value: 'PRODUCT' }]" @change="changeType" />
-        <div class="select-tools"><el-input v-model="keyword" clearable :placeholder="itemType === 'PRODUCT' ? '搜索物资编号' : '搜索设备编号或名称'" @keyup.enter="searchCandidates" /><el-button :icon="Search" @click="searchCandidates">查询</el-button><el-button type="primary" :disabled="!canPrint || !selected.length" :loading="loading" @click="preview">生成预览</el-button></div>
-        <el-table :data="candidates" height="220" @selection-change="choose"><el-table-column type="selection" width="48" /><el-table-column :prop="itemType === 'DEVICE' ? 'deviceCode' : 'productCode'" label="编号" /><el-table-column prop="productName" label="名称" /></el-table>
+        <div class="select-tools"><el-input v-model="keyword" clearable :placeholder="itemType === 'PRODUCT' ? '搜索物资编号' : '搜索设备编号或名称'" @keyup.enter="searchCandidates" /><el-button :icon="Search" @click="searchCandidates">查询资源</el-button><el-button type="primary" :disabled="!canPrint || !selected.length" :loading="loading" @click="preview">生成预览</el-button><span class="muted">已选 {{ selected.length }} / 30</span></div>
+        <el-table :data="candidates" max-height="260" empty-text="当前条件下暂无可选资源" @selection-change="choose"><el-table-column type="selection" width="48" /><el-table-column :prop="itemType === 'DEVICE' ? 'deviceCode' : 'productCode'" label="编号" min-width="180" show-overflow-tooltip><template #default="{ row }"><span class="record-code">{{ itemType === 'DEVICE' ? row.deviceCode : row.productCode }}</span></template></el-table-column><el-table-column prop="productName" label="名称" min-width="180" show-overflow-tooltip /></el-table>
         <div class="size-tools"><span>宽</span><el-input-number v-model="settings.width" :min="60" :max="100" :step="5" /><span>高</span><el-input-number v-model="settings.height" :min="35" :max="70" :step="5" /><span>二维码</span><el-input-number v-model="settings.qr" :min="18" :max="maxQrSize" :step="2" /><span>边距</span><el-input-number v-model="settings.margin" :min="2" :max="5" /><span>mm</span><el-button :icon="Printer" :disabled="!labels.length || !canPrint" @click="printLabels">打印</el-button></div>
       </div>
       <div v-if="labels.length" class="label-sheet">

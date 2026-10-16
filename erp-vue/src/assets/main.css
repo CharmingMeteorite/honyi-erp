@@ -90,8 +90,10 @@
 .app-main .el-alert { margin: 0 0 16px; border-radius: 8px; }
 .app-main .el-table { width: 100%; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; --el-table-border-color: var(--line); --el-table-header-bg-color: var(--surface-subtle); --el-table-row-hover-bg-color: #f6f9ff; }
 .app-main .el-table th.el-table__cell { height: 42px; color: #607086; font-size: 12px; font-weight: 700; letter-spacing: .01em; }
-.app-main .el-table td.el-table__cell { padding: 9px 0; color: #28364c; }
+.app-main .el-table td.el-table__cell { padding: var(--table-row-padding) 0; color: #28364c; }
 .app-main .el-table .cell { line-height: 1.45; overflow-wrap: anywhere; }
+.app-main .el-table__empty-block { min-height: 92px; }
+.app-main .el-table__empty-text { color: var(--text-muted); font-size: 13px; }
 .app-main .el-table .el-button + .el-button { margin-left: 10px; }
 .app-main .el-table .el-button.is-link { font-weight: 600; white-space: nowrap; }
 .app-main .el-pagination { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 4px; margin: 14px 0 0; }
@@ -102,14 +104,14 @@
 .app-main .el-tag--danger { --el-tag-bg-color: #fff0f1; --el-tag-border-color: #f1d9dd; --el-tag-text-color: #b64251; }
 .app-main .el-tag--info { --el-tag-bg-color: #f1f4f8; --el-tag-border-color: #e2e7ee; --el-tag-text-color: #59677c; }
 .el-button { font-weight: 600; }
-.el-button:not(.is-link) { min-height: 34px; }
+.el-button:not(.is-link) { min-height: var(--control-height); }
 .el-input__wrapper, .el-select__wrapper, .el-textarea__inner { box-shadow: 0 0 0 1px var(--line-strong) inset; }
 .el-input__wrapper:hover, .el-select__wrapper:hover, .el-textarea__inner:hover { box-shadow: 0 0 0 1px #9cb2d3 inset; }
 .el-input__wrapper.is-focus, .el-select__wrapper.is-focused, .el-textarea__inner:focus { box-shadow: 0 0 0 1px var(--brand) inset, 0 0 0 3px rgba(20, 91, 255, .10); }
-.el-dialog { max-width: calc(100vw - 28px); border-radius: 12px; overflow: hidden; }
+.el-dialog { --el-dialog-margin-top: min(6vh, 54px); display: flex; flex-direction: column; max-width: calc(100vw - 28px); max-height: calc(100dvh - 108px); border-radius: 12px; overflow: hidden; }
 .el-dialog__header { padding: 20px 24px 15px; border-bottom: 1px solid var(--line); }
 .el-dialog__title { font-size: 17px; font-weight: 700; }
-.el-dialog__body { max-height: min(70vh, 720px); overflow: auto; padding: 20px 24px; }
+.el-dialog__body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 20px 24px; }
 .el-dialog__footer { padding: 14px 24px 20px; border-top: 1px solid var(--line); }
 .el-dialog .el-form-item__label { color: var(--text-secondary); font-weight: 600; }
 .el-dialog .el-descriptions { margin-bottom: 18px; }
@@ -125,6 +127,36 @@
 .el-tabs__item { font-weight: 600; }
 .el-tree-node__content { min-height: 32px; }
 .table-footer { display: flex; justify-content: flex-end; }
+.business-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.business-filters > .el-input, .business-filters > .el-select, .business-filters > .el-input-number { width: 188px; min-width: 0; }
+.business-filters > .el-date-editor { max-width: 100%; }
+.business-filters .filter-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.business-filters .filter-actions .el-button + .el-button { margin-left: 0; }
+.business-filters .filter-extra { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; width: 100%; padding-top: 11px; border-top: 1px solid var(--line); }
+.business-filters .filter-extra > .el-input, .business-filters .filter-extra > .el-select, .business-filters .filter-extra > .el-input-number { width: 188px; }
+.result-heading { min-width: 0; display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 5px 12px; margin: 17px 0 10px; }
+.result-heading strong { color: var(--text); font-size: 15px; font-weight: 700; }
+.result-heading span { color: var(--text-muted); font-size: 12px; }
+.record-code { display: inline-block; max-width: 100%; color: var(--text); font-weight: 680; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
+.record-name { color: var(--text); font-weight: 600; }
+.number-cell { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.change-value { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.change-value.is-in { color: var(--success); }
+.change-value.is-out { color: var(--danger); }
+.app-main .dialog-section-title { display: flex; align-items: baseline; gap: 8px; margin: 18px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); color: var(--text); font-size: 14px; font-weight: 700; }
+.app-main .dialog-section-title:first-child { margin-top: 0; }
+.dialog-section-title small { color: var(--text-muted); font-size: 12px; font-weight: 400; }
+.business-form .el-form-item { margin-bottom: 16px; }
+.business-form .el-select, .business-form .el-date-editor { width: 100%; }
+.business-form .el-form-item__content { min-width: 0; }
+.detail-lead { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 14px 16px; background: var(--surface-subtle); border: 1px solid var(--line); border-radius: 8px; }
+.detail-lead > div { display: grid; gap: 3px; min-width: 0; }
+.detail-lead small { color: var(--text-muted); font-size: 12px; }
+.detail-lead strong { color: var(--text); font-size: 19px; overflow-wrap: anywhere; }
+.detail-lead span { color: var(--text-secondary); font-size: 13px; }
+.dialog-add-row { margin-top: 10px; }
+.app-main .el-dialog .el-descriptions__content { overflow-wrap: anywhere; }
+.app-main .el-dialog .el-descriptions__label { white-space: nowrap; }
 .sidebar-shade { display: none; }
 @media (max-width: 1080px) { .app-header { padding-inline: 20px; } .app-main { padding: 20px 20px 32px; } }
 @media (max-width: 760px) {
@@ -139,6 +171,8 @@
   .page-heading, .page-head { flex-wrap: wrap; }
   .filter-bar, .query-controls, .report-filters { padding: 12px; }
   .filter-bar .el-input, .filter-bar .el-select, .query-controls .el-input, .report-filters .el-input { width: 100%; }
+  .business-filters > .el-input, .business-filters > .el-select, .business-filters > .el-input-number, .business-filters .filter-extra > .el-input, .business-filters .filter-extra > .el-select, .business-filters .filter-extra > .el-input-number { width: 100%; }
+  .business-filters .filter-actions { width: 100%; }
   .app-main .el-card__body { padding: 14px; }
   .el-dialog__body { max-height: 68vh; }
 }

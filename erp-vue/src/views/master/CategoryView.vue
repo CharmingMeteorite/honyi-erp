@@ -22,6 +22,7 @@ function open(row = null) {
   dialog.value = true
 }
 async function save() {
+  if (saving.value) return
   if (!form.categoryCode?.trim() || !form.categoryName?.trim()) { ElMessage.warning('请填写分类编码和名称'); return }
   saving.value = true
   try {
@@ -42,17 +43,17 @@ onMounted(load)
 <template>
   <div class="page-heading"><div><h1>物资分类</h1><p>按层级维护分类编码、名称与排序。</p></div><el-button v-if="hasPermission('system.category.create')" type="primary" @click="open()">新增分类</el-button></div>
   <el-card>
-    <div class="list-caption"><strong>分类结构</strong><span>共 {{ flat.length }} 项，可展开查看下级分类</span></div>
+    <div class="result-heading"><strong>分类结构</strong><span>共 {{ flat.length }} 项，可展开查看下级分类</span></div>
     <el-table v-loading="loading" :data="rows" row-key="id" default-expand-all empty-text="暂无分类">
-      <el-table-column prop="categoryName" label="分类名称" min-width="220" show-overflow-tooltip />
-      <el-table-column prop="categoryCode" label="分类编码" min-width="160" show-overflow-tooltip />
+      <el-table-column prop="categoryName" label="分类名称" min-width="220" show-overflow-tooltip><template #default="{ row }"><span class="record-name">{{ row.categoryName }}</span></template></el-table-column>
+      <el-table-column prop="categoryCode" label="分类编码" min-width="160" show-overflow-tooltip><template #default="{ row }"><span class="record-code">{{ row.categoryCode }}</span></template></el-table-column>
       <el-table-column prop="sortOrder" label="排序" width="90" align="right" />
       <el-table-column label="状态" width="100"><template #default="{ row }"><el-tag :type="row.status ? 'success' : 'info'">{{ row.status ? '启用' : '停用' }}</el-tag></template></el-table-column>
-      <el-table-column label="操作" width="150"><template #default="{ row }"><el-button v-if="hasPermission('system.category.update')" link type="primary" @click="open(row)">编辑</el-button><el-button v-if="hasPermission('system.category.disable')" link @click="toggle(row)">{{ row.status ? '停用' : '启用' }}</el-button></template></el-table-column>
+      <el-table-column label="操作" width="150" fixed="right"><template #default="{ row }"><el-button v-if="hasPermission('system.category.update')" link type="primary" @click="open(row)">编辑</el-button><el-button v-if="hasPermission('system.category.disable')" link @click="toggle(row)">{{ row.status ? '停用' : '启用' }}</el-button></template></el-table-column>
     </el-table>
   </el-card>
   <el-dialog v-model="dialog" :title="editing ? '编辑分类' : '新增分类'" width="520px">
-    <el-form label-width="100px">
+    <el-form label-width="100px" class="business-form">
       <el-form-item label="上级分类"><el-select v-model="form.parentId" clearable filterable placeholder="顶级分类"><el-option v-for="item in flat.filter(item => item.id !== editing)" :key="item.id" :label="item.categoryName" :value="item.id" /></el-select></el-form-item>
       <el-form-item label="分类编码" required><el-input v-model="form.categoryCode" maxlength="64" /></el-form-item>
       <el-form-item label="分类名称" required><el-input v-model="form.categoryName" maxlength="100" /></el-form-item>
@@ -63,7 +64,5 @@ onMounted(load)
   </el-dialog>
 </template>
 <style scoped>
-.list-caption { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
-.list-caption span { color: var(--text-muted); font-size: 12px; }
 .el-form .el-select { width: 100%; }
 </style>

@@ -7,6 +7,7 @@ import { hasPermission } from '../lib/auth.js'
 
 const router = useRouter()
 const rows = ref([]), total = ref(0), unread = ref(0), loading = ref(false), marking = ref(false), error = ref('')
+const openingId = ref(null)
 const page = reactive({ page: 1, size: 20 })
 const targets = {
   PRODUCT: ['system.product.view', '/master-data/products', '/api/master-data/products/'], DEVICE: ['system.device.view', '/assets/devices', '/api/assets/devices/'],
@@ -21,9 +22,11 @@ async function load() {
     const data = await api.notifications(page)
     rows.value = data.list; total.value = data.total; unread.value = await api.notificationCount()
     window.dispatchEvent(new Event('erp:notifications-changed'))
-  } catch (e) { error.value = e.message } finally { loading.value = false }
+  } catch (e) { rows.value = []; total.value = 0; error.value = e.message } finally { loading.value = false }
 }
 async function read(row) {
+  if (openingId.value) return
+  openingId.value = row.id
   try {
     await api.readNotification(row.id); await load()
     const target = targets[row.businessType]
@@ -32,8 +35,10 @@ async function read(row) {
     catch { ElMessage.warning('关联业务已不存在或当前无权查看'); return }
     router.push({ path: target[1], query: { id: row.businessId } })
   } catch (e) { ElMessage.error(e.message) }
+  finally { openingId.value = null }
 }
 async function readAll() {
+  if (marking.value) return
   marking.value = true
   try { await api.readAllNotifications(); await load(); ElMessage.success('通知已全部标记为已读') }
   catch (e) { ElMessage.error(e.message) }
@@ -51,20 +56,20 @@ onMounted(load)
       <li v-for="row in rows" :key="row.id" class="notification-item" :class="{ unread: !row.readAt }">
         <span class="notification-dot" aria-hidden="true" />
         <div class="notification-copy"><div class="notification-title"><strong>{{ row.title }}</strong><el-tag :type="row.readAt ? 'info' : 'primary'" size="small" effect="plain">{{ row.readAt ? '已读' : '未读' }}</el-tag></div><p>{{ row.summary }}</p><time>{{ row.createdAt }}</time></div>
-        <el-button link type="primary" @click="read(row)">查看业务</el-button>
+        <el-button link type="primary" :loading="openingId === row.id" :disabled="!!openingId" @click="read(row)">查看业务</el-button>
       </li>
     </ul>
     <el-pagination v-if="total" v-model:current-page="page.page" v-model:page-size="page.size" :total="total" layout="total, prev, pager, next" @current-change="load" />
   </section>
 </template>
 <style scoped>
-.notification-panel { min-height: 220px; padding: 0 20px 20px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
+.notification-panel { min-height: 150px; padding: 0 20px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
 .notification-overview { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 65px; border-bottom: 1px solid var(--line); }
 .notification-overview > div { display: flex; align-items: baseline; gap: 12px; }
 .notification-overview strong { font-size: 15px; }
 .notification-overview span { color: var(--text-muted); font-size: 12px; }
 .notification-list { margin: 0; padding: 0; list-style: none; }
-.notification-item { display: flex; align-items: flex-start; gap: 13px; padding: 18px 4px; border-bottom: 1px solid var(--line); }
+.notification-item { display: flex; align-items: flex-start; gap: 13px; padding: 14px 8px; border-bottom: 1px solid var(--line); }
 .notification-item:last-child { border: 0; }
 .notification-item.unread { background: #f8fbff; }
 .notification-dot { width: 7px; height: 7px; flex: none; margin-top: 7px; border-radius: 50%; background: #c4cbd6; }

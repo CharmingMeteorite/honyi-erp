@@ -8,6 +8,12 @@ import { hasPermission } from '../lib/auth.js'
 const props = defineProps({ businessType: String, businessId: Number })
 const rows = ref([]), busy = ref(false), actionId = ref(null), error = ref(''), input = ref(null)
 const limit = 20 * 1024 * 1024
+function fileSize(bytes) {
+  if (bytes == null) return '—'
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`
+}
 async function load() {
   if (!props.businessType || !props.businessId || !hasPermission('attachment.view')) return
   busy.value = true; error.value = ''
@@ -57,10 +63,10 @@ async function remove(row) {
       <el-button size="small" :icon="RefreshRight" :loading="busy" @click="load">刷新</el-button>
     </div></div>
     <el-alert v-if="error" :title="error" type="error" :closable="false" />
-    <el-empty v-else-if="!busy && !rows.length" description="当前业务暂无附件" :image-size="70" />
+    <el-empty v-else-if="!busy && !rows.length" description="当前业务暂无附件" :image-size="58" />
     <el-table v-else v-loading="busy" :data="rows" size="small">
       <el-table-column label="文件名" min-width="220" show-overflow-tooltip><template #default="{ row }"><span class="file-name"><el-icon><Document /></el-icon>{{ row.displayName }}</span></template></el-table-column>
-      <el-table-column label="大小" width="110"><template #default="{ row }">{{ (row.sizeBytes / 1024).toFixed(1) }} KiB</template></el-table-column>
+      <el-table-column label="大小" width="110" align="right"><template #default="{ row }"><span class="number-cell">{{ fileSize(row.sizeBytes) }}</span></template></el-table-column>
       <el-table-column label="状态" width="120"><template #default="{ row }"><el-tag :type="row.status === 'DELETE_PENDING' ? 'warning' : 'success'" size="small">{{ row.status === 'DELETE_PENDING' ? '删除待重试' : '可用' }}</el-tag></template></el-table-column>
       <el-table-column prop="createdAt" label="上传时间" width="180" />
       <el-table-column label="操作" width="190"><template #default="{ row }">
@@ -72,7 +78,7 @@ async function remove(row) {
   </section>
 </template>
 <style scoped>
-.attachment-panel { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); }
+.attachment-panel { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
 .attachment-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .attachment-heading > div:first-child { display: grid; gap: 5px; }
 .attachment-heading strong { font-size: 15px; }

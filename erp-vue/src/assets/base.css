@@ -8,6 +8,7 @@
   --text-secondary: #59677c; --text-muted: #78869a;
   --success: #16805d; --warning: #ad701c; --danger: #bf4050;
   --radius: 10px; --shadow: 0 4px 18px rgba(27, 48, 83, .035);
+  --control-height: 34px; --table-row-padding: 7px;
   --el-color-primary: var(--brand); --el-color-primary-dark-2: var(--brand-dark);
   --el-border-color: var(--line); --el-border-color-light: var(--line);
   --el-border-color-lighter: #edf1f6; --el-fill-color-light: var(--surface-subtle);

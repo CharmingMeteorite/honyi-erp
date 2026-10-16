@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search, RefreshRight } from '@element-plus/icons-vue'
@@ -10,9 +10,11 @@ import AttachmentPanel from '../../components/AttachmentPanel.vue'
 const route = useRoute()
 const router = useRouter()
 const rows = ref([]), total = ref(0), loading = ref(false), saving = ref(false)
+const error = ref(''), advancedOpen = ref(false)
 const dialog = ref(false), detailDialog = ref(false), editing = ref(null), detail = ref(null)
 const categories = ref([]), brands = ref([]), units = ref([])
 const query = reactive({ page: 1, size: 20, code: '', name: '', model: '', productType: '', status: null })
+const advancedCount = computed(() => [query.model, query.productType, query.status].filter(value => value !== '' && value !== null).length)
 const defaults = () => ({
   productCode: '', productName: '', categoryId: null, brandId: null, model: '',
   specification: '', unitId: null, productType: 'QUANTITY', trackSn: false,
@@ -31,8 +33,9 @@ async function loadOptions() {
 }
 async function load() {
   loading.value = true
+  error.value = ''
   try { const data = await api.products(query); rows.value = data.list; total.value = data.total }
-  catch (e) { ElMessage.error(e.message) }
+  catch (e) { rows.value = []; total.value = 0; error.value = e.message; ElMessage.error(e.message) }
   finally { loading.value = false }
 }
 function reset() {
@@ -49,6 +52,7 @@ async function openDetail(row) {
   catch (e) { ElMessage.error(e.message) }
 }
 async function save() {
+  if (saving.value) return
   if (!form.productName?.trim() || !form.productCode?.trim()) { ElMessage.warning('请填写物资编码和名称'); return }
   saving.value = true
   try {
@@ -77,17 +81,17 @@ onMounted(async () => {
 <template>
   <div class="page-heading"><div><h1>物资档案</h1><p>维护编码、分类、型号和库存管理属性。</p></div><el-button v-if="hasPermission('system.product.create')" type="primary" @click="open()">新增物资</el-button></div>
   <section class="product-panel">
-    <div class="filter-bar">
+    <div class="filter-bar business-filters">
       <el-input v-model="query.code" clearable placeholder="物资编码" @keyup.enter="query.page=1;load()" />
       <el-input v-model="query.name" clearable placeholder="物资名称" @keyup.enter="query.page=1;load()" />
-      <el-input v-model="query.model" clearable placeholder="型号" @keyup.enter="query.page=1;load()" />
-      <el-select v-model="query.productType" clearable placeholder="全部类型"><el-option label="数量型" value="QUANTITY" /><el-option label="设备型" value="DEVICE" /></el-select>
-      <el-button type="primary" :icon="Search" :loading="loading" @click="query.page=1;load()">查询</el-button>
-      <el-button :icon="RefreshRight" @click="reset">重置</el-button>
+      <div class="filter-actions"><el-button type="primary" :icon="Search" :loading="loading" @click="query.page=1;load()">查询物资</el-button><el-button :icon="RefreshRight" @click="reset">重置</el-button><el-button text @click="advancedOpen = !advancedOpen">{{ advancedOpen ? '收起筛选' : '更多筛选' }}{{ advancedCount ? ` · ${advancedCount}` : '' }}</el-button></div>
+      <div v-show="advancedOpen" class="filter-extra"><el-input v-model="query.model" clearable placeholder="型号" @keyup.enter="query.page=1;load()" /><el-select v-model="query.productType" clearable placeholder="全部类型"><el-option label="数量型" value="QUANTITY" /><el-option label="设备型" value="DEVICE" /></el-select><el-select v-model="query.status" clearable placeholder="全部状态"><el-option label="启用" :value="true" /><el-option label="停用" :value="false" /></el-select></div>
     </div>
-    <el-table v-loading="loading" :data="rows" empty-text="当前条件下暂无物资">
-      <el-table-column prop="productCode" label="物资编码" min-width="150" show-overflow-tooltip />
-      <el-table-column prop="productName" label="名称" min-width="180" show-overflow-tooltip />
+    <el-alert v-if="error" type="error" :title="error" :closable="false" show-icon />
+    <div class="result-heading"><strong>物资列表</strong><span v-if="!loading && !error">共 {{ total }} 项</span><span v-else-if="loading">正在查询物资…</span></div>
+    <el-table v-loading="loading" :data="rows" :empty-text="error ? '查询失败，请重试' : '当前条件下暂无物资'">
+      <el-table-column prop="productCode" label="物资编码" min-width="160" show-overflow-tooltip><template #default="{ row }"><span class="record-code">{{ row.productCode }}</span></template></el-table-column>
+      <el-table-column prop="productName" label="名称" min-width="180" show-overflow-tooltip><template #default="{ row }"><span class="record-name">{{ row.productName }}</span></template></el-table-column>
       <el-table-column prop="categoryName" label="分类" min-width="110" show-overflow-tooltip />
       <el-table-column prop="brandName" label="品牌" min-width="100" show-overflow-tooltip />
       <el-table-column prop="model" label="型号" min-width="120" show-overflow-tooltip />
@@ -103,7 +107,7 @@ onMounted(async () => {
   </section>
 
   <el-dialog v-model="dialog" :title="editing ? '编辑物资' : '新增物资'" width="700px" :close-on-click-modal="false">
-    <el-form label-width="100px" class="product-form">
+    <el-form label-width="100px" class="product-form business-form">
       <h3>基础信息</h3>
       <el-form-item label="物资编码" required><el-input v-model="form.productCode" maxlength="64" /></el-form-item>
       <el-form-item label="物资名称" required><el-input v-model="form.productName" maxlength="100" /></el-form-item>
@@ -114,9 +118,9 @@ onMounted(async () => {
       <h3>管理方式</h3>
       <el-form-item label="类型"><el-radio-group v-model="form.productType"><el-radio value="QUANTITY">数量型</el-radio><el-radio value="DEVICE">设备型</el-radio></el-radio-group></el-form-item>
       <el-form-item label="单位"><el-select v-model="form.unitId" filterable><el-option v-for="item in units" :key="item.id" :label="item.unitName" :value="item.id" /></el-select></el-form-item>
-      <el-form-item label="管理属性"><div class="product-checks"><el-checkbox v-model="form.trackSn">SN 管理</el-checkbox><el-checkbox v-model="form.trackMac">MAC 管理</el-checkbox><el-checkbox v-model="form.isFixedAsset">固定资产</el-checkbox><el-checkbox v-model="form.enableQrcode">启用二维码</el-checkbox></div></el-form-item>
-      <el-form-item label="库存配置"><div class="stock-config"><label>安全库存 <el-input-number v-model="form.safetyStock" :min="0" /></label><label>最低库存 <el-input-number v-model="form.minStock" :min="0" /></label><label>最高库存 <el-input-number v-model="form.maxStock" :min="0" /></label></div></el-form-item>
-      <el-form-item label="备注"><el-input v-model="form.remark" type="textarea" :rows="3" /></el-form-item>
+      <el-form-item class="form-wide" label="管理属性"><div class="product-checks"><el-checkbox v-model="form.trackSn">SN 管理</el-checkbox><el-checkbox v-model="form.trackMac">MAC 管理</el-checkbox><el-checkbox v-model="form.isFixedAsset">固定资产</el-checkbox><el-checkbox v-model="form.enableQrcode">启用二维码</el-checkbox></div></el-form-item>
+      <el-form-item class="form-wide" label="库存配置"><div class="stock-config"><label>安全库存 <el-input-number v-model="form.safetyStock" :min="0" /></label><label>最低库存 <el-input-number v-model="form.minStock" :min="0" /></label><label>最高库存 <el-input-number v-model="form.maxStock" :min="0" /></label></div></el-form-item>
+      <el-form-item class="form-wide" label="备注"><el-input v-model="form.remark" type="textarea" :rows="3" /></el-form-item>
     </el-form>
     <template #footer><el-button @click="dialog=false">取消</el-button><el-button type="primary" :loading="saving" @click="save">保存档案</el-button></template>
   </el-dialog>
@@ -142,7 +146,10 @@ onMounted(async () => {
 
 <style scoped>
 .product-panel { min-width: 0; }
-.product-form h3 { margin: 6px 0 18px; padding-bottom: 9px; border-bottom: 1px solid var(--line); }
+.product-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 14px; }
+.product-form h3 { grid-column: 1 / -1; margin: 8px 0 15px; padding-bottom: 9px; border-bottom: 1px solid var(--line); }
+.product-form h3:first-child { margin-top: 0; }
+.product-form .form-wide { grid-column: 1 / -1; }
 .product-form .el-select { width: 100%; }
 .product-checks, .stock-config { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
 .stock-config label { display: grid; gap: 5px; color: var(--text-secondary); font-size: 12px; }
@@ -151,4 +158,5 @@ onMounted(async () => {
 .detail-identity small { color: var(--text-muted); }
 .detail-identity strong { font-size: 20px; }
 .detail-identity span { color: var(--text-secondary); }
+@media (max-width: 620px) { .product-form { display: block; } }
 </style>

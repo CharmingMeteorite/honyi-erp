@@ -10,6 +10,7 @@ import { statusTagType } from '../../lib/status.js'
 const states = { DRAFT: '草稿', COUNTING: '盘点中', COUNTED: '待确认', CONFIRMED: '已确认', CANCELLED: '已取消' }
 const differences = { MATCH: '相符', MISSING: '缺失', EXTRA: '账外', UNREGISTERED: '未登记', WRONG_PRODUCT: '错产品', OUTSIDE_WAREHOUSE: '库外', STATUS_ABNORMAL: '状态异常' }
 const rows = ref([]), total = ref(0), loading = ref(false), saving = ref(false), acting = ref(false)
+const loadError = ref('')
 const warehouses = ref([]), products = ref([]), detail = ref(null), detailVisible = ref(false)
 const editorVisible = ref(false), editingId = ref(null), countVisible = ref(false), countingItem = ref(null)
 const filters = reactive({ warehouseId: null, status: '', keyword: '', page: 1, size: 20 })
@@ -22,8 +23,9 @@ const displayDifference = (value) => value == null ? '—' : Number(value) > 0 ?
 
 async function load() {
   loading.value = true
+  loadError.value = ''
   try { const data = await api.stocktakes(filters); rows.value = data.list; total.value = data.total }
-  catch (error) { ElMessage.error(error.message) } finally { loading.value = false }
+  catch (error) { rows.value = []; total.value = 0; loadError.value = error.message; ElMessage.error(error.message) } finally { loading.value = false }
 }
 async function searchWarehouses(keyword = '') {
   try { warehouses.value = (await api.stocktakeOptions('warehouses', { keyword, size: 100 })).list }
@@ -50,6 +52,7 @@ async function openEditor(row) {
   } catch (error) { ElMessage.error(error.message) }
 }
 async function saveDraft() {
+  if (saving.value) return
   if (!form.warehouseId || !form.productIds.length) return ElMessage.warning('请选择仓库和盘点物资')
   saving.value = true
   try {
@@ -84,6 +87,7 @@ function openCount(item) {
   countVisible.value = true
 }
 async function saveCount() {
+  if (saving.value) return
   if (!detail.value || !countingItem.value) return
   const device = countingItem.value.productType === 'DEVICE'
   const payload = { version: detail.value.version, quantity: device ? null : countForm.quantity,
@@ -103,19 +107,21 @@ onMounted(() => { load(); searchWarehouses() })
 <template>
   <div class="stocktake-page">
     <div class="page-head"><div><h2>库存盘点</h2><p class="page-subtitle">登记实盘、核对差异并确认库存调整</p></div><el-button v-if="can('create')" type="primary" :icon="Plus" @click="openEditor()">新建盘点</el-button></div>
-    <div class="filter-bar">
+    <div class="filter-bar business-filters">
       <el-input v-model="filters.keyword" clearable placeholder="盘点单号" @keyup.enter="filters.page = 1; load()" />
       <el-select v-model="filters.status" clearable placeholder="全部状态"><el-option v-for="(label, state) in states" :key="state" :label="label" :value="state" /></el-select>
       <el-select v-model="filters.warehouseId" clearable filterable remote :remote-method="searchWarehouses" placeholder="全部仓库"><el-option v-for="w in warehouses" :key="w.id" :label="w.warehouseName" :value="w.id" /></el-select>
-      <el-button type="primary" :icon="Search" @click="filters.page = 1; load()">查询</el-button><el-button :icon="Refresh" @click="reset">重置</el-button>
+      <div class="filter-actions"><el-button type="primary" :icon="Search" :loading="loading" @click="filters.page = 1; load()">查询盘点</el-button><el-button :icon="Refresh" @click="reset">重置</el-button></div>
     </div>
-    <el-table v-loading="loading" :data="rows" row-key="id">
-      <el-table-column prop="stocktakeNo" label="盘点单号" min-width="280" />
-      <el-table-column prop="warehouseName" label="仓库" min-width="130" />
+    <el-alert v-if="loadError" type="error" :title="loadError" :closable="false" show-icon />
+    <div class="result-heading"><strong>盘点单列表</strong><span v-if="!loading && !loadError">共 {{ total }} 张盘点单</span><span v-else-if="loading">正在查询盘点…</span></div>
+    <el-table v-loading="loading" :data="rows" row-key="id" :empty-text="loadError ? '查询失败，请重试' : '当前条件下暂无盘点单'">
+      <el-table-column prop="stocktakeNo" label="盘点单号" min-width="220" show-overflow-tooltip><template #default="{ row }"><span class="record-code">{{ row.stocktakeNo }}</span></template></el-table-column>
+      <el-table-column prop="warehouseName" label="仓库" min-width="130" show-overflow-tooltip />
       <el-table-column label="状态" width="110"><template #default="{ row }"><el-tag :type="statusTagType(row.status)">{{ states[row.status] }}</el-tag></template></el-table-column>
       <el-table-column prop="creatorName" label="制单人" min-width="110" />
-      <el-table-column prop="createdAt" label="创建时间" min-width="180" />
-      <el-table-column label="操作" min-width="340"><template #default="{ row }">
+      <el-table-column prop="createdAt" label="创建时间" min-width="170" show-overflow-tooltip />
+      <el-table-column label="操作" min-width="300" fixed="right"><template #default="{ row }">
         <el-button link :icon="View" @click="openDetail(row)">详情</el-button>
         <el-button v-if="row.status === 'DRAFT' && can('update')" link :icon="Edit" @click="openEditor(row)">编辑</el-button>
         <el-button v-if="row.status === 'DRAFT' && can('submit')" link :icon="Check" :disabled="acting" @click="action(row, 'submit')">提交</el-button>
@@ -136,6 +142,8 @@ onMounted(() => { load(); searchWarehouses() })
 
     <el-drawer v-model="detailVisible" title="盘点详情" size="min(1050px, 100vw)" class="stocktake-drawer">
       <template v-if="detail">
+        <div class="detail-lead"><div><small>盘点单号</small><strong>{{ detail.stocktakeNo }}</strong><span>{{ detail.warehouseName }} · {{ detail.creatorName }}</span></div><el-tag :type="statusTagType(detail.status)">{{ states[detail.status] }}</el-tag></div>
+        <h3 class="dialog-section-title">单据概况</h3>
         <el-descriptions :column="2" border>
           <el-descriptions-item label="单号">{{ detail.stocktakeNo }}</el-descriptions-item>
           <el-descriptions-item label="状态">{{ states[detail.status] }}</el-descriptions-item>
@@ -145,13 +153,13 @@ onMounted(() => { load(); searchWarehouses() })
           <el-descriptions-item label="确认时间">{{ detail.confirmedAt || '—' }}</el-descriptions-item>
           <el-descriptions-item label="备注" :span="2">{{ detail.remark || '—' }}</el-descriptions-item>
         </el-descriptions>
-        <h3>盘点明细</h3>
+        <h3>盘点明细</h3><p class="muted difference-note">盘点差异用于核对；正式库存调整以确认后生成的流水为准。</p>
         <el-table :data="detail.items" row-key="id">
           <el-table-column label="物资" min-width="190"><template #default="{ row }">{{ row.productCode }} · {{ row.productName }}</template></el-table-column>
           <el-table-column label="类型" width="95"><template #default="{ row }">{{ row.productType === 'DEVICE' ? '设备' : '数量' }}</template></el-table-column>
           <el-table-column prop="snapshotQuantity" label="账面" width="100" />
           <el-table-column label="实盘" width="100"><template #default="{ row }">{{ row.countedQuantity ?? '未录入' }}</template></el-table-column>
-          <el-table-column label="差异" width="100"><template #default="{ row }">{{ displayDifference(row.differenceQuantity) }}</template></el-table-column>
+          <el-table-column label="盘点差异" width="110" align="right"><template #default="{ row }"><span class="number-cell">{{ displayDifference(row.differenceQuantity) }}</span></template></el-table-column>
           <el-table-column label="操作" width="110"><template #default="{ row }"><el-button v-if="['COUNTING','COUNTED'].includes(detail.status) && can('count')" link :icon="Edit" @click="openCount(row)">录入</el-button></template></el-table-column>
         </el-table>
         <template v-for="item in detail.items.filter(i => i.productType === 'DEVICE' && i.devices.length)" :key="item.id">
@@ -194,6 +202,7 @@ onMounted(() => { load(); searchWarehouses() })
 .wide { width: 100%; }
 .el-pagination { margin-top: 16px; }
 h3 { margin: 24px 0 10px; font-size: 16px; }
+.difference-note { margin: 0 0 10px; font-size: 12px; }
 .detail-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin: 22px 0; }
 @media (max-width: 640px) { .filter-bar .el-input, .filter-bar .el-select { width: 100%; } .page-head h2 { font-size: 20px; } }
 </style>

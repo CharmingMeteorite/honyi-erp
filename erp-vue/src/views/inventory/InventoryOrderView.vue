@@ -12,6 +12,7 @@ const states = { DRAFT: '草稿', PENDING_APPROVAL: '待审批', APPROVED: '已�
 const actions = { submit: '提交审批', approve: '审批通过', reject: '审批拒绝', execute: '执行', cancel: '取消单据' }
 const logLabels = { CREATE: '创建', UPDATE: '编辑', SUBMIT: '提交审批', APPROVE: '审批通过', REJECT: '审批拒绝', EXECUTE: '执行', CANCEL: '取消' }
 const rows = ref([]), total = ref(0), loading = ref(false), saving = ref(false), acting = ref(false)
+const loadError = ref('')
 const warehouses = ref([]), products = ref([]), visible = ref(false), editingId = ref(null), readOnly = ref(false)
 const detail = ref(null), dates = ref([])
 const filters = reactive({ warehouseId: null, status: '', keyword: '', page: 1, size: 20 })
@@ -31,11 +32,12 @@ async function searchProducts(keyword = '') {
 }
 async function load() {
   loading.value = true
+  loadError.value = ''
   const kind = props.kind
   try {
     const data = await api.inventoryOrders(kind, { ...filters, fromDate: dates.value?.[0], toDate: dates.value?.[1] })
     if (kind === props.kind) { rows.value = data.list; total.value = data.total }
-  } catch (e) { ElMessage.error(e.message) } finally { loading.value = false }
+  } catch (e) { rows.value = []; total.value = 0; loadError.value = e.message; ElMessage.error(e.message) } finally { loading.value = false }
 }
 async function open(row, onlyDetail = false) {
   try {
@@ -73,7 +75,11 @@ function applyDevices() {
   deviceDialog.value = false
 }
 async function save() {
-  if (!form.warehouseId || !form.items.length || form.items.some(i => !i.productId || !/^\d+(\.\d{1,4})?$/.test(String(i.quantity)) || Number(i.quantity) <= 0)) return ElMessage.warning('请选择仓库、物资并填写正数数量')
+  if (saving.value) return
+  if (!form.warehouseId) return ElMessage.warning('请选择仓库')
+  if (!form.items.length) return ElMessage.warning('请至少添加一行物资明细')
+  const invalidIndex = form.items.findIndex(i => !i.productId || !/^\d+(\.\d{1,4})?$/.test(String(i.quantity)) || Number(i.quantity) <= 0)
+  if (invalidIndex !== -1) return ElMessage.warning(`第 ${invalidIndex + 1} 行明细需选择物资并填写正数数量`)
   if (new Set(form.items.map(i => i.productId)).size !== form.items.length) return ElMessage.warning('同一产品只能添加一行')
   saving.value = true
   const data = { clientRequestId: form.clientRequestId, version: form.version, warehouseId: form.warehouseId, remark: form.remark,
@@ -111,18 +117,20 @@ watch(() => props.kind, () => { visible.value = false; deviceDialog.value = fals
   <div class="page">
     <div class="page-head"><div><h2>{{ title }}</h2><p class="page-subtitle">按单据状态管理审批、执行及库存变化</p></div><el-button v-if="can('create')" type="primary" @click="open()">新建{{ title }}</el-button></div>
     <el-alert :closable="false" :title="props.kind === 'inbound' ? '入库设备请先在设备档案中建档，再选择未归属仓库的设备。审批不会改变库存，正式执行才会入库。' : '出库须选择当前仓库的在库设备。审批不会扣减库存，正式执行后设备变为已出库。'" />
-    <div class="filter-bar">
+    <div class="filter-bar business-filters">
       <el-input v-model="filters.keyword" clearable placeholder="单号" @keyup.enter="filters.page = 1; load()" />
       <el-select v-model="filters.status" clearable placeholder="全部状态"><el-option v-for="(name, state) in states" :key="state" :value="state" :label="name" /></el-select>
       <el-select v-model="filters.warehouseId" clearable filterable remote :remote-method="searchWarehouses" placeholder="全部仓库"><el-option v-for="w in warehouses" :key="w.id" :value="w.id" :label="w.warehouseName" /></el-select>
       <el-date-picker v-model="dates" type="daterange" value-format="YYYY-MM-DD" start-placeholder="创建日期起" end-placeholder="创建日期止" />
-      <el-button type="primary" @click="filters.page = 1; load()">查询</el-button><el-button @click="reset">重置</el-button>
+      <div class="filter-actions"><el-button type="primary" :loading="loading" @click="filters.page = 1; load()">查询单据</el-button><el-button @click="reset">重置</el-button></div>
     </div>
-    <el-table v-loading="loading" :data="rows">
-      <el-table-column prop="orderNo" label="单号" min-width="250" show-overflow-tooltip /><el-table-column prop="warehouseName" label="仓库" min-width="130" show-overflow-tooltip />
+    <el-alert v-if="loadError" type="error" :title="loadError" :closable="false" show-icon />
+    <div class="result-heading"><strong>{{ title }}列表</strong><span v-if="!loading && !loadError">共 {{ total }} 张单据</span><span v-else-if="loading">正在查询单据…</span></div>
+    <el-table v-loading="loading" :data="rows" :empty-text="loadError ? '查询失败，请重试' : '当前条件下暂无单据'">
+      <el-table-column prop="orderNo" label="单号" min-width="210" show-overflow-tooltip><template #default="{ row }"><span class="record-code">{{ row.orderNo }}</span></template></el-table-column><el-table-column prop="warehouseName" label="仓库" min-width="130" show-overflow-tooltip />
       <el-table-column label="状态" width="110"><template #default="{ row }"><el-tag :type="statusTagType(row.status)">{{ states[row.status] }}</el-tag></template></el-table-column>
-      <el-table-column prop="creatorName" label="制单人" /><el-table-column prop="createdAt" label="创建时间" min-width="180" />
-      <el-table-column label="操作" min-width="330"><template #default="{ row }">
+      <el-table-column prop="creatorName" label="制单人" min-width="100" show-overflow-tooltip /><el-table-column prop="createdAt" label="创建时间" min-width="170" show-overflow-tooltip />
+      <el-table-column label="操作" min-width="310" fixed="right"><template #default="{ row }">
         <el-button link @click="open(row, true)">详情</el-button>
         <el-button v-if="editable(row) && can('update')" link @click="open(row)">{{ row.status === 'REJECTED' ? '修订草稿' : '编辑' }}</el-button>
         <el-button v-if="row.status === 'DRAFT' && can('submit')" link :disabled="acting" @click="act(row, 'submit')">提交审批</el-button>
@@ -134,23 +142,27 @@ watch(() => props.kind, () => { visible.value = false; deviceDialog.value = fals
     <el-pagination v-model:current-page="filters.page" :page-size="filters.size" :total="total" layout="total, prev, pager, next" @current-change="load" />
     <el-dialog v-model="visible" :title="`${readOnly ? '详情' : editingId ? '编辑' : '新建'} · ${title}`" width="min(1150px, 96vw)" :close-on-click-modal="false">
       <template v-if="detail && readOnly">
+        <div class="detail-lead"><div><small>业务单号</small><strong>{{ detail.orderNo }}</strong><span>{{ detail.warehouseName }} · {{ detail.creatorName }}</span></div><el-tag :type="statusTagType(detail.status)">{{ states[detail.status] }}</el-tag></div>
+        <h3 class="dialog-section-title">单据概况</h3>
         <el-descriptions :column="3" border>
           <el-descriptions-item label="单号">{{ detail.orderNo }}</el-descriptions-item><el-descriptions-item label="状态">{{ states[detail.status] }}</el-descriptions-item><el-descriptions-item label="制单人">{{ detail.creatorName }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ detail.createdAt }}</el-descriptions-item><el-descriptions-item label="提交时间">{{ detail.submittedAt || '—' }}</el-descriptions-item><el-descriptions-item label="审批">{{ detail.approverName || '—' }} {{ detail.approvedAt }}</el-descriptions-item>
           <el-descriptions-item label="执行">{{ detail.executorName || '—' }} {{ detail.executedAt }}</el-descriptions-item><el-descriptions-item label="请求追踪">{{ detail.requestId || '—' }}</el-descriptions-item><el-descriptions-item label="版本">{{ detail.version }}</el-descriptions-item>
         </el-descriptions>
       </template>
-      <el-form label-width="80px">
+      <h3 class="dialog-section-title">基本信息</h3>
+      <el-form label-width="80px" class="business-form">
         <el-form-item label="仓库" required><el-select v-model="form.warehouseId" :disabled="readOnly" filterable remote :remote-method="searchWarehouses" @change="warehouseChanged"><el-option v-for="w in warehouses" :key="w.id" :value="w.id" :label="w.warehouseName" :disabled="w.status === false" /></el-select></el-form-item>
         <el-form-item label="备注"><el-input v-model="form.remark" :disabled="readOnly" maxlength="500" /></el-form-item>
       </el-form>
+      <h3 class="dialog-section-title">物资明细 <small>设备型物资需选择具体设备</small></h3>
       <el-table :data="form.items">
         <el-table-column label="物资" min-width="220"><template #default="{ row }"><span v-if="readOnly">{{ row.productCode }} · {{ row.productName }}</span><el-select v-else v-model="row.productId" filterable remote :remote-method="searchProducts" @change="productChanged(row)"><el-option v-if="row.productId && !products.some(p => p.id === row.productId)" :value="row.productId" :label="row.productName" /><el-option v-for="p in products" :key="p.id" :value="p.id" :label="`${p.productCode} · ${p.productName}`" /></el-select></template></el-table-column>
         <el-table-column label="数量" width="140"><template #default="{ row }"><el-input v-model="row.quantity" :disabled="readOnly || row.productType === 'DEVICE'" inputmode="decimal" /></template></el-table-column>
         <el-table-column label="具体设备" min-width="350"><template #default="{ row }"><template v-if="row.productType === 'DEVICE'"><el-button v-if="!readOnly" @click="chooseDevices(row)">选择设备（{{ row.devices.length }}）</el-button><div v-for="d in row.devices" :key="d.deviceId" class="device-identity">{{ identity(d) }}</div></template><span v-else>数量管理</span></template></el-table-column>
         <el-table-column v-if="!readOnly" label="操作" width="70"><template #default="{ $index }"><el-button link type="danger" @click="form.items.splice($index, 1)">移除</el-button></template></el-table-column>
       </el-table>
-      <el-button v-if="!readOnly" :disabled="form.items.length >= 100" @click="form.items.push(newItem())">添加明细</el-button>
+      <el-button v-if="!readOnly" class="dialog-add-row" :disabled="form.items.length >= 100" @click="form.items.push(newItem())">添加明细</el-button>
       <template v-if="readOnly && detail">
         <h3>审批与操作记录</h3><el-table :data="detail.logs"><el-table-column label="动作"><template #default="{ row }">{{ logLabels[row.operationType.split('_').slice(1).join('_')] || row.operationType }}</template></el-table-column><el-table-column prop="operatorName" label="操作人" /><el-table-column prop="detail" label="说明" min-width="200" /><el-table-column prop="createdAt" label="时间" min-width="180" /><el-table-column prop="requestId" label="请求追踪" min-width="200" /></el-table>
         <h3>执行结果</h3><el-empty v-if="!detail.ledgers.length" description="尚未执行，没有库存变化" :image-size="60" />

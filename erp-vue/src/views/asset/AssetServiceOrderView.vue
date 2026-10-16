@@ -13,6 +13,8 @@ const warrantyNames = { VALID: '保修期内', EXPIRED: '已过保', UNKNOWN: '�
 const decisionNames = { WARRANTY: '保内维修', PAID_REPAIR: '明确转自费维修', REJECTED: '拒绝' }
 const states = computed(() => props.kind === 'repair' ? ['DRAFT', 'SUBMITTED', 'ACCEPTED', 'REPAIRING', 'COMPLETED', 'UNREPAIRABLE', 'CANCELLED', 'CLOSED'] : props.kind === 'warranty' ? ['DRAFT', 'SUBMITTED', 'ACCEPTED', 'APPROVED', 'REJECTED', 'COMPLETED', 'CANCELLED'] : ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'COMPLETED', 'CANCELLED'])
 const filters = reactive({ keyword: '', status: '', deviceId: null, productId: null, applicantId: null, fromDate: '', toDate: '', page: 1, size: 20 })
+const advancedOpen = ref(false), loadError = ref('')
+const advancedCount = computed(() => [filters.deviceId, filters.productId, filters.applicantId, filters.fromDate, filters.toDate].filter(value => value !== null && value !== '').length)
 const rows = ref([]), total = ref(0), loading = ref(false), saving = ref(false)
 const detail = ref(null), detailOpen = ref(false), editOpen = ref(false), deviceOptions = ref([]), newOptions = ref([])
 const devicePage = ref(1), newPage = ref(1), deviceTotal = ref(0), newTotal = ref(0), deviceKeyword = ref(''), newKeyword = ref('')
@@ -43,10 +45,12 @@ function allowed(row) {
 }
 async function load() {
   loading.value = true
+  loadError.value = ''
   try { const data = await api.assetServiceOrders(props.kind, filters); rows.value = data.list; total.value = data.total }
-  catch (error) { ElMessage.error(error.message) } finally { loading.value = false }
+  catch (error) { rows.value = []; total.value = 0; loadError.value = error.message; ElMessage.error(error.message) } finally { loading.value = false }
 }
 function search() { filters.page = 1; load() }
+function reset() { Object.assign(filters, { keyword: '', status: '', deviceId: null, productId: null, applicantId: null, fromDate: '', toDate: '', page: 1 }); load() }
 async function show(row) {
   try { detail.value = await api.assetServiceOrder(props.kind, row.id); detailOpen.value = true }
   catch (error) { ElMessage.error(error.message) }
@@ -81,6 +85,7 @@ async function findNewDevices(keyword = newKeyword.value) {
   catch (error) { ElMessage.error(error.message) }
 }
 async function save() {
+  if (saving.value) return
   if (!form.deviceId || !form.reason?.trim()) { ElMessage.warning('请选择设备并填写原因'); return }
   if (props.kind === 'exchange' && !form.newDeviceId) { ElMessage.warning('请选择独立的新设备'); return }
   if (props.kind !== 'exchange' && !form.faultDescription?.trim()) { ElMessage.warning('请填写故障描述'); return }
@@ -93,6 +98,7 @@ function prepareAction(row, action) {
   Object.assign(actionForm, { clientRequestId: crypto.randomUUID(), result: '', remark: row.remark || '', notes: row.notes || '' }); actionOpen.value = true
 }
 async function executeAction() {
+  if (saving.value) return
   const action = chosenAction.value
   if (['complete', 'unrepairable', 'approve', 'paid-repair', 'reject'].includes(action) && !actionForm.result.trim()) { ElMessage.warning('请填写明确的处理结果'); return }
   try { await ElMessageBox.confirm(`确认${actionLabels[action]}？设备和库存将在后端重新校验。`, '业务确认', { type: 'warning' }) } catch { return }
@@ -110,20 +116,18 @@ onMounted(load)
   <div class="page">
     <div class="page-head"><div><h2>{{ titles[kind] }}</h2><p class="page-subtitle">按业务编号和设备追踪申请、处理进度及设备历史</p></div><el-button v-if="can('create')" type="primary" @click="newForm">新建申请</el-button></div>
     <div class="panel">
-      <div class="filter-bar">
+      <div class="filter-bar business-filters">
         <el-input v-model="filters.keyword" clearable placeholder="业务编号 / 设备编号 / 产品" @keyup.enter="search" />
         <el-select v-model="filters.status" clearable placeholder="全部状态"><el-option v-for="state in states" :key="state" :value="state" :label="stateNames[state]" /></el-select>
-        <el-input-number v-model="filters.deviceId" :min="1" :precision="0" placeholder="设备 ID" />
-        <el-input-number v-model="filters.productId" :min="1" :precision="0" placeholder="产品 ID" />
-        <el-input-number v-model="filters.applicantId" :min="1" :precision="0" placeholder="申请人 ID" />
-        <el-date-picker v-model="filters.fromDate" type="date" value-format="YYYY-MM-DD" placeholder="开始日期" />
-        <el-date-picker v-model="filters.toDate" type="date" value-format="YYYY-MM-DD" placeholder="结束日期" />
-        <el-button type="primary" @click="search">查询</el-button>
+        <div class="filter-actions"><el-button type="primary" :loading="loading" @click="search">查询业务</el-button><el-button @click="reset">重置</el-button><el-button text @click="advancedOpen = !advancedOpen">{{ advancedOpen ? '收起筛选' : '更多筛选' }}{{ advancedCount ? ` · ${advancedCount}` : '' }}</el-button></div>
+        <div v-show="advancedOpen" class="filter-extra"><el-input-number v-model="filters.deviceId" :min="1" :precision="0" placeholder="设备 ID" /><el-input-number v-model="filters.productId" :min="1" :precision="0" placeholder="产品 ID" /><el-input-number v-model="filters.applicantId" :min="1" :precision="0" placeholder="申请人 ID" /><el-date-picker v-model="filters.fromDate" type="date" value-format="YYYY-MM-DD" placeholder="开始日期" /><el-date-picker v-model="filters.toDate" type="date" value-format="YYYY-MM-DD" placeholder="结束日期" /></div>
       </div>
-      <el-table v-loading="loading" :data="rows" empty-text="暂无业务单据">
-        <el-table-column prop="orderNo" label="业务编号" min-width="220" show-overflow-tooltip />
-        <el-table-column prop="deviceCode" label="设备编号" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="productName" label="产品" min-width="150" show-overflow-tooltip />
+      <el-alert v-if="loadError" type="error" :title="loadError" :closable="false" show-icon />
+      <div class="result-heading"><strong>{{ titles[kind] }}列表</strong><span v-if="!loading && !loadError">共 {{ total }} 张单据</span><span v-else-if="loading">正在查询业务…</span></div>
+      <el-table v-loading="loading" :data="rows" :empty-text="loadError ? '查询失败，请重试' : '当前条件下暂无业务单据'">
+        <el-table-column prop="orderNo" label="业务编号" min-width="210" show-overflow-tooltip><template #default="{ row }"><span class="record-code">{{ row.orderNo }}</span></template></el-table-column>
+        <el-table-column prop="deviceCode" label="设备编号" min-width="150" show-overflow-tooltip><template #default="{ row }"><span class="record-code">{{ row.deviceCode }}</span></template></el-table-column>
+        <el-table-column prop="productName" label="产品" min-width="150" show-overflow-tooltip><template #default="{ row }"><span class="record-name">{{ row.productName }}</span></template></el-table-column>
         <el-table-column prop="applicantName" label="申请人" width="110" />
         <el-table-column label="状态" width="110"><template #default="{ row }"><el-tag :type="statusTagType(row.status)">{{ stateNames[row.status] }}</el-tag></template></el-table-column>
         <el-table-column prop="createdAt" label="申请时间" min-width="170" />
@@ -137,7 +141,8 @@ onMounted(load)
     </div>
 
     <el-dialog v-model="editOpen" :title="`${editingId ? '编辑草稿' : '新建'} · ${titles[kind]}`" width="720px" :close-on-click-modal="false">
-      <el-form label-width="110px">
+      <h3 class="dialog-section-title">关联设备 <small>按当前状态和权限检索可处理设备</small></h3>
+      <el-form label-width="110px" class="business-form">
         <el-form-item :label="kind === 'exchange' ? '旧设备' : '具体设备'" required>
           <el-select v-model="form.deviceId" filterable remote :remote-method="findDevices" :disabled="!!editingId" placeholder="搜索合法设备" @change="selectDevice">
             <el-option v-for="device in deviceOptions" :key="device.id" :value="device.id" :label="`${device.deviceCode} · ${device.productName || ''}`" />
@@ -148,6 +153,7 @@ onMounted(load)
           <el-select v-model="form.newDeviceId" filterable remote :remote-method="findNewDevices" :disabled="!!editingId || !form.deviceId" placeholder="同产品可用库存设备"><el-option v-for="device in newOptions" :key="device.id" :value="device.id" :label="`${device.deviceCode} · ${device.warehouseName || ''}`" /></el-select>
           <el-pagination v-if="!editingId" v-model:current-page="newPage" :total="newTotal" :page-size="20" layout="prev, pager, next" @current-change="findNewDevices()" />
         </el-form-item>
+        <h3 class="dialog-section-title">问题与处理信息</h3>
         <el-form-item :label="kind === 'exchange' ? '换货原因' : '申请原因'" required><el-input v-model="form.reason" type="textarea" maxlength="500" show-word-limit /></el-form-item>
         <el-form-item v-if="kind === 'repair'" label="故障现象" required><el-input v-model="form.faultPhenomenon" maxlength="200" /></el-form-item>
         <el-form-item v-if="kind !== 'exchange'" label="故障描述" required><el-input v-model="form.faultDescription" type="textarea" maxlength="1000" show-word-limit /></el-form-item>

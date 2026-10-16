@@ -17,6 +17,7 @@ function openBatchLabels() {
 }
 const total = ref(0)
 const loading = ref(false)
+const loadError = ref(''), advancedOpen = ref(false)
 const saving = ref(false)
 const products = ref([])
 const filterProducts = ref([])
@@ -32,6 +33,7 @@ const detail = ref(null)
 const statusDevice = ref(null)
 const formRef = ref(null)
 const filters = reactive({ keyword: '', status: '', productId: null, departmentId: null, userId: null, page: 1, size: 20 })
+const advancedCount = computed(() => [filters.productId, filters.departmentId, filters.userId].filter(Boolean).length)
 const empty = () => ({
   deviceCode: '', productId: null, serialNumber: '', macAddress: '', assetNo: '',
   departmentId: null, userId: null, custodianId: null, purchaseAt: null, inboundAt: null,
@@ -64,11 +66,12 @@ const personLabel = person => person.realName + '（' + person.username + '）'
 
 async function load() {
   loading.value = true
+  loadError.value = ''
   try {
     const data = await api.devices(filters)
     rows.value = data.list
     total.value = data.total
-  } catch (e) { ElMessage.error(e.message) } finally { loading.value = false }
+  } catch (e) { rows.value = []; total.value = 0; loadError.value = e.message; ElMessage.error(e.message) } finally { loading.value = false }
 }
 function search() { filters.page = 1; load() }
 function resetFilters() {
@@ -179,20 +182,19 @@ onMounted(async () => {
     <div><h1>设备管理</h1><p class="muted">按独立设备编号管理资产资料、归属和状态历史。</p></div>
     <div><el-button v-if="hasPermission('asset.qr.print') && selectedDeviceIds.length" @click="openBatchLabels">批量标签</el-button><el-button v-if="hasPermission('system.device.create')" type="primary" @click="openCreate">新增设备</el-button></div>
   </div>
-  <el-card>
-    <el-form inline class="device-filters" @submit.prevent="search">
+  <section class="device-list-panel">
+    <el-form inline class="device-filters business-filters" @submit.prevent="search">
       <el-form-item><el-input v-model="filters.keyword" class="keyword" placeholder="编号、产品、型号、SN、MAC、资产号、人员、部门" clearable @keyup.enter="search" /></el-form-item>
       <el-form-item><el-select v-model="filters.status" clearable placeholder="设备状态"><el-option v-for="x in statusOptions" :key="x.value" :label="x.label" :value="x.value" /></el-select></el-form-item>
-      <el-form-item><el-select v-model="filters.productId" clearable filterable remote :remote-method="searchProducts" placeholder="搜索产品名称"><el-option v-for="x in filterProducts" :key="x.id" :label="x.productName + ' / ' + (x.model || x.productCode)" :value="x.id" /></el-select></el-form-item>
-      <el-form-item><el-select v-model="filters.departmentId" clearable filterable placeholder="归属部门"><el-option v-for="x in filterDepartments" :key="x.id" :label="x.departmentName" :value="x.id" /></el-select></el-form-item>
-      <el-form-item><el-select v-model="filters.userId" clearable filterable remote :remote-method="searchUsers" placeholder="使用人或保管人"><el-option v-for="x in filterUsers" :key="x.id" :label="personLabel(x)" :value="x.id" /></el-select></el-form-item>
-      <el-button type="primary" @click="search">查询</el-button><el-button @click="resetFilters">重置</el-button>
+      <div class="filter-actions"><el-button type="primary" :loading="loading" @click="search">查询设备</el-button><el-button @click="resetFilters">重置</el-button><el-button text @click="advancedOpen = !advancedOpen">{{ advancedOpen ? '收起筛选' : '更多筛选' }}{{ advancedCount ? ` · ${advancedCount}` : '' }}</el-button></div>
+      <div v-show="advancedOpen" class="filter-extra"><el-form-item><el-select v-model="filters.productId" clearable filterable remote :remote-method="searchProducts" placeholder="搜索产品名称"><el-option v-for="x in filterProducts" :key="x.id" :label="x.productName + ' / ' + (x.model || x.productCode)" :value="x.id" /></el-select></el-form-item><el-form-item><el-select v-model="filters.departmentId" clearable filterable placeholder="归属部门"><el-option v-for="x in filterDepartments" :key="x.id" :label="x.departmentName" :value="x.id" /></el-select></el-form-item><el-form-item><el-select v-model="filters.userId" clearable filterable remote :remote-method="searchUsers" placeholder="使用人或保管人"><el-option v-for="x in filterUsers" :key="x.id" :label="personLabel(x)" :value="x.id" /></el-select></el-form-item></div>
     </el-form>
-    <div class="device-result-heading"><strong>设备列表</strong><span>共 {{ total }} 台 · 当前页 {{ rows.length }} 台</span></div>
-    <el-table v-loading="loading" :data="rows" row-key="id" empty-text="当前范围内暂无设备" @selection-change="items => selectedDeviceIds = items.map(item => item.id)">
+    <el-alert v-if="loadError" type="error" :title="loadError" :closable="false" show-icon />
+    <div class="result-heading"><strong>设备列表</strong><span v-if="!loading && !loadError">共 {{ total }} 台 · 当前页 {{ rows.length }} 台</span><span v-else-if="loading">正在查询设备…</span></div>
+    <el-table v-loading="loading" :data="rows" row-key="id" :empty-text="loadError ? '查询失败，请重试' : '当前范围内暂无设备'" @selection-change="items => selectedDeviceIds = items.map(item => item.id)">
       <el-table-column v-if="hasPermission('asset.qr.print')" type="selection" width="48" />
-      <el-table-column label="设备编号" min-width="165" show-overflow-tooltip><template #default="{ row }"><strong class="device-code">{{ row.deviceCode }}</strong></template></el-table-column>
-      <el-table-column prop="productName" label="产品" min-width="160" show-overflow-tooltip />
+      <el-table-column label="设备编号" min-width="165" show-overflow-tooltip><template #default="{ row }"><strong class="record-code">{{ row.deviceCode }}</strong></template></el-table-column>
+      <el-table-column prop="productName" label="产品" min-width="160" show-overflow-tooltip><template #default="{ row }"><span class="record-name">{{ row.productName }}</span></template></el-table-column>
       <el-table-column prop="model" label="型号" min-width="110" show-overflow-tooltip />
       <el-table-column prop="serialNumber" label="SN" min-width="140" show-overflow-tooltip />
       <el-table-column prop="macAddress" label="MAC" min-width="165" show-overflow-tooltip />
@@ -208,11 +210,12 @@ onMounted(async () => {
       </template></el-table-column>
     </el-table>
     <el-pagination v-model:current-page="filters.page" v-model:page-size="filters.size" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next" @current-change="load" @size-change="search" />
-  </el-card>
+  </section>
 
   <el-dialog v-model="dialog" :title="editing ? '编辑设备' : '新增设备'" width="760px" destroy-on-close class="device-dialog">
     <el-alert v-if="identityLocked" title="该设备已有状态历史，SN、MAC和固定资产编号已锁定。" type="info" :closable="false" />
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="115px" class="device-form" @submit.prevent="save">
+    <el-form ref="formRef" :model="form" :rules="rules" label-width="115px" class="device-form business-form" @submit.prevent="save">
+      <h3 class="dialog-section-title">设备标识与产品</h3>
       <el-form-item label="设备编号"><el-input v-model="form.deviceCode" :disabled="!!editing" maxlength="64" placeholder="留空自动生成 DEV 编号" /></el-form-item>
       <el-form-item label="产品" prop="productId">
         <el-input v-if="editing" :model-value="editing.productName + ' / ' + (editing.model || editing.productCode)" disabled />
@@ -223,13 +226,15 @@ onMounted(async () => {
       <el-form-item label="SN" prop="serialNumber"><el-input v-model="form.serialNumber" :disabled="!!identityLocked" maxlength="128" :placeholder="selectedProduct?.trackSn ? '该产品要求必填' : '选填'" /></el-form-item>
       <el-form-item label="MAC" prop="macAddress"><el-input v-model="form.macAddress" :disabled="!!identityLocked" maxlength="32" :placeholder="selectedProduct?.trackMac ? '必填，例如 AA:BB:CC:DD:EE:FF' : '选填，例如 AA:BB:CC:DD:EE:FF'" /></el-form-item>
       <el-form-item label="固定资产编号"><el-input v-model="form.assetNo" :disabled="!!identityLocked" maxlength="64" /></el-form-item>
+      <h3 class="dialog-section-title">归属信息</h3>
       <el-form-item label="归属部门"><el-select v-model="form.departmentId" clearable filterable @change="changeDepartment"><el-option v-for="x in departments" :key="x.id" :label="x.departmentName" :value="x.id" :disabled="x.disabled" /></el-select></el-form-item>
       <el-form-item label="使用人"><el-select v-model="form.userId" clearable filterable remote :remote-method="value => searchUsers(value, true)" :disabled="!form.departmentId" placeholder="先选部门，再搜索实际使用人"><el-option v-for="x in users" :key="x.id" :label="personLabel(x)" :value="x.id" :disabled="!x.status" /></el-select></el-form-item>
       <el-form-item label="保管人"><el-select v-model="form.custodianId" clearable filterable remote :remote-method="value => searchUsers(value, true)" :disabled="!form.departmentId" placeholder="负责保管的人，可与使用人不同"><el-option v-for="x in users" :key="x.id" :label="personLabel(x)" :value="x.id" :disabled="!x.status" /></el-select></el-form-item>
+      <h3 class="dialog-section-title">日期与备注</h3>
       <el-form-item v-for="field in dateFields" :key="field.key" :label="field.label"><el-date-picker v-model="form[field.key]" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" /></el-form-item>
-      <el-form-item label="备注"><el-input v-model="form.remark" type="textarea" maxlength="500" show-word-limit :rows="2" /></el-form-item>
-      <el-form-item label="注意事项"><el-input v-model="form.notes" type="textarea" maxlength="1000" show-word-limit :rows="3" /></el-form-item>
-      <p class="muted">新设备默认处于公司持有状态。入库登记时间仅用于资料留档，不产生库存数量。</p>
+      <el-form-item class="form-wide" label="备注"><el-input v-model="form.remark" type="textarea" maxlength="500" show-word-limit :rows="2" /></el-form-item>
+      <el-form-item class="form-wide" label="注意事项"><el-input v-model="form.notes" type="textarea" maxlength="1000" show-word-limit :rows="3" /></el-form-item>
+      <p class="muted form-wide">新设备默认处于公司持有状态。入库登记时间仅用于资料留档，不产生库存数量。</p>
     </el-form>
     <template #footer><el-button @click="dialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="save">保存</el-button></template>
   </el-dialog>
@@ -294,13 +299,16 @@ onMounted(async () => {
 <style scoped>
 .device-filters .el-select { width: 190px; }
 .device-filters .keyword { width: min(390px, 100%); }
-.device-result-heading { display: flex; align-items: baseline; gap: 12px; margin: 18px 0 12px; }
-.device-result-heading strong { font-size: 15px; }.device-result-heading span { color: var(--text-muted); font-size: 12px; }
-.device-code { color: var(--brand-dark); font-weight: 700; }
+.device-filters .filter-extra :deep(.el-form-item) { margin: 0; }
+.device-filters .filter-extra :deep(.el-select) { width: 190px; }
+.device-list-panel { min-width: 0; }
 .device-detail-identity { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 20px; padding: 17px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-subtle); }
 .device-detail-identity > div { display: grid; gap: 4px; }.device-detail-identity span, .device-detail-identity small { color: var(--text-muted); }.device-detail-identity strong { font-size: 20px; }
-.device-form { margin-top: 16px; }
+.device-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 14px; margin-top: 16px; }
+.device-form .dialog-section-title, .device-form .form-wide { grid-column: 1 / -1; }
+.device-form .form-wide { margin-top: 0; }
 .device-form .el-select, .device-form :deep(.el-date-editor) { width: 100%; }
 .multiline { white-space: pre-wrap; overflow-wrap: anywhere; }
 :global(.device-dialog) { max-width: calc(100vw - 24px); }
+@media (max-width: 760px) { .device-form { display: block; } .device-filters .keyword, .device-filters .el-select, .device-filters .filter-extra :deep(.el-select) { width: 100%; } }
 </style>

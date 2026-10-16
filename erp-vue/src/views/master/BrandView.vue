@@ -21,6 +21,7 @@ function open(row = null) {
   dialog.value = true
 }
 async function save() {
+  if (saving.value) return
   if (!form.brandCode?.trim() || !form.brandName?.trim()) { ElMessage.warning('请填写品牌编码和名称'); return }
   saving.value = true
   try {
@@ -41,17 +42,17 @@ onMounted(load)
 <template>
   <div class="page-heading"><div><h1>品牌管理</h1><p>维护物资品牌编码、名称和启用状态。</p></div><el-button v-if="hasPermission('system.brand.create')" type="primary" @click="open()">新增品牌</el-button></div>
   <el-card>
-    <div class="list-caption"><strong>品牌列表</strong><span>共 {{ rows.length }} 项</span></div>
+    <div class="result-heading"><strong>品牌列表</strong><span>共 {{ rows.length }} 项</span></div>
     <el-table v-loading="loading" :data="rows" empty-text="暂无品牌">
-      <el-table-column prop="brandCode" label="品牌编码" min-width="150" show-overflow-tooltip />
-      <el-table-column prop="brandName" label="品牌名称" min-width="180" show-overflow-tooltip />
+      <el-table-column prop="brandCode" label="品牌编码" min-width="150" show-overflow-tooltip><template #default="{ row }"><span class="record-code">{{ row.brandCode }}</span></template></el-table-column>
+      <el-table-column prop="brandName" label="品牌名称" min-width="180" show-overflow-tooltip><template #default="{ row }"><span class="record-name">{{ row.brandName }}</span></template></el-table-column>
       <el-table-column prop="remark" label="备注" min-width="200" show-overflow-tooltip />
       <el-table-column label="状态" width="100"><template #default="{ row }"><el-tag :type="row.status ? 'success' : 'info'">{{ row.status ? '启用' : '停用' }}</el-tag></template></el-table-column>
-      <el-table-column label="操作" width="150"><template #default="{ row }"><el-button v-if="hasPermission('system.brand.update')" link type="primary" @click="open(row)">编辑</el-button><el-button v-if="hasPermission('system.brand.disable')" link @click="toggle(row)">{{ row.status ? '停用' : '启用' }}</el-button></template></el-table-column>
+      <el-table-column label="操作" width="150" fixed="right"><template #default="{ row }"><el-button v-if="hasPermission('system.brand.update')" link type="primary" @click="open(row)">编辑</el-button><el-button v-if="hasPermission('system.brand.disable')" link @click="toggle(row)">{{ row.status ? '停用' : '启用' }}</el-button></template></el-table-column>
     </el-table>
   </el-card>
   <el-dialog v-model="dialog" :title="editing ? '编辑品牌' : '新增品牌'" width="520px">
-    <el-form label-width="90px">
+    <el-form label-width="90px" class="business-form">
       <el-form-item label="品牌编码" required><el-input v-model="form.brandCode" maxlength="64" /></el-form-item>
       <el-form-item label="品牌名称" required><el-input v-model="form.brandName" maxlength="100" /></el-form-item>
       <el-form-item label="备注"><el-input v-model="form.remark" type="textarea" :rows="3" /></el-form-item>
@@ -60,7 +61,3 @@ onMounted(load)
     <template #footer><el-button @click="dialog=false">取消</el-button><el-button type="primary" :loading="saving" @click="save">保存</el-button></template>
   </el-dialog>
 </template>
-<style scoped>
-.list-caption { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
-.list-caption span { color: var(--text-muted); font-size: 12px; }
-</style>
