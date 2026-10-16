@@ -6,7 +6,7 @@ import { api, request } from '../lib/api.js'
 import { hasPermission } from '../lib/auth.js'
 
 const router = useRouter()
-const rows = ref([]), total = ref(0), unread = ref(0), loading = ref(false), error = ref('')
+const rows = ref([]), total = ref(0), unread = ref(0), loading = ref(false), marking = ref(false), error = ref('')
 const page = reactive({ page: 1, size: 20 })
 const targets = {
   PRODUCT: ['system.product.view', '/master-data/products', '/api/master-data/products/'], DEVICE: ['system.device.view', '/assets/devices', '/api/assets/devices/'],
@@ -34,23 +34,46 @@ async function read(row) {
   } catch (e) { ElMessage.error(e.message) }
 }
 async function readAll() {
-  try { await api.readAllNotifications(); await load() } catch (e) { ElMessage.error(e.message) }
+  marking.value = true
+  try { await api.readAllNotifications(); await load(); ElMessage.success('通知已全部标记为已读') }
+  catch (e) { ElMessage.error(e.message) }
+  finally { marking.value = false }
 }
 onMounted(load)
 </script>
 <template>
-  <div class="page-heading"><h1>站内通知</h1><el-button :disabled="!unread" @click="readAll">全部标记已读</el-button></div>
-  <el-card v-loading="loading">
-    <p>未读 {{ unread }} 条</p>
+  <div class="page-heading"><div><h1>站内通知</h1><p>业务状态更新与处理提醒，仅显示当前账号的通知。</p></div><el-button :disabled="!unread || marking" :loading="marking" @click="readAll">全部标记已读</el-button></div>
+  <section v-loading="loading" class="notification-panel">
+    <div class="notification-overview"><div><strong>消息中心</strong><span>共 {{ total }} 条通知</span></div><el-tag v-if="unread" type="primary" effect="plain">{{ unread }} 条未读</el-tag><span v-else class="muted">全部已读</span></div>
     <el-alert v-if="error" :title="error" type="error" :closable="false" />
-    <el-empty v-else-if="!rows.length" description="暂无通知" />
-    <el-table v-else :data="rows" row-key="id">
-      <el-table-column label="状态" width="90"><template #default="{ row }"><el-tag :type="row.readAt ? 'info' : 'primary'">{{ row.readAt ? '已读' : '未读' }}</el-tag></template></el-table-column>
-      <el-table-column prop="title" label="标题" min-width="150" />
-      <el-table-column prop="summary" label="摘要" min-width="220" />
-      <el-table-column prop="createdAt" label="时间" width="190" />
-      <el-table-column label="操作" width="130"><template #default="{ row }"><el-button link @click="read(row)">查看业务</el-button></template></el-table-column>
-    </el-table>
-    <el-pagination v-model:current-page="page.page" v-model:page-size="page.size" :total="total" @current-change="load" />
-  </el-card>
+    <el-empty v-else-if="!loading && !rows.length" description="暂无通知" />
+    <ul v-else class="notification-list">
+      <li v-for="row in rows" :key="row.id" class="notification-item" :class="{ unread: !row.readAt }">
+        <span class="notification-dot" aria-hidden="true" />
+        <div class="notification-copy"><div class="notification-title"><strong>{{ row.title }}</strong><el-tag :type="row.readAt ? 'info' : 'primary'" size="small" effect="plain">{{ row.readAt ? '已读' : '未读' }}</el-tag></div><p>{{ row.summary }}</p><time>{{ row.createdAt }}</time></div>
+        <el-button link type="primary" @click="read(row)">查看业务</el-button>
+      </li>
+    </ul>
+    <el-pagination v-if="total" v-model:current-page="page.page" v-model:page-size="page.size" :total="total" layout="total, prev, pager, next" @current-change="load" />
+  </section>
 </template>
+<style scoped>
+.notification-panel { min-height: 220px; padding: 0 20px 20px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
+.notification-overview { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 65px; border-bottom: 1px solid var(--line); }
+.notification-overview > div { display: flex; align-items: baseline; gap: 12px; }
+.notification-overview strong { font-size: 15px; }
+.notification-overview span { color: var(--text-muted); font-size: 12px; }
+.notification-list { margin: 0; padding: 0; list-style: none; }
+.notification-item { display: flex; align-items: flex-start; gap: 13px; padding: 18px 4px; border-bottom: 1px solid var(--line); }
+.notification-item:last-child { border: 0; }
+.notification-item.unread { background: #f8fbff; }
+.notification-dot { width: 7px; height: 7px; flex: none; margin-top: 7px; border-radius: 50%; background: #c4cbd6; }
+.notification-item.unread .notification-dot { background: var(--brand); }
+.notification-copy { min-width: 0; flex: 1; }
+.notification-title { display: flex; align-items: center; gap: 8px; }
+.notification-title strong { font-size: 14px; }
+.notification-copy p { margin: 6px 0; color: var(--text-secondary); line-height: 1.5; overflow-wrap: anywhere; }
+.notification-copy time { color: var(--text-muted); font-size: 12px; }
+.notification-item .el-button { flex: none; }
+@media (max-width: 600px) { .notification-panel { padding-inline: 12px; } .notification-item { flex-wrap: wrap; } .notification-item .el-button { margin-left: 20px; } }
+</style>

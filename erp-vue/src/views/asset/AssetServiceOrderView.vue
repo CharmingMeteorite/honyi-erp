@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../../lib/api.js'
 import { authState, hasPermission } from '../../lib/auth.js'
+import { statusTagType } from '../../lib/status.js'
 import AttachmentPanel from '../../components/AttachmentPanel.vue'
 
 const props = defineProps({ kind: { type: String, required: true } })
@@ -107,24 +108,24 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="page-head"><h2>{{ titles[kind] }}</h2><el-button v-if="can('create')" type="primary" @click="newForm">新建申请</el-button></div>
+    <div class="page-head"><div><h2>{{ titles[kind] }}</h2><p class="page-subtitle">按业务编号和设备追踪申请、处理进度及设备历史</p></div><el-button v-if="can('create')" type="primary" @click="newForm">新建申请</el-button></div>
     <div class="panel">
       <div class="filter-bar">
         <el-input v-model="filters.keyword" clearable placeholder="业务编号 / 设备编号 / 产品" @keyup.enter="search" />
         <el-select v-model="filters.status" clearable placeholder="全部状态"><el-option v-for="state in states" :key="state" :value="state" :label="stateNames[state]" /></el-select>
-        <el-input-number v-model="filters.deviceId" :min="1" :precision="0" placeholder="Device ID" />
-        <el-input-number v-model="filters.productId" :min="1" :precision="0" placeholder="Product ID" />
+        <el-input-number v-model="filters.deviceId" :min="1" :precision="0" placeholder="设备 ID" />
+        <el-input-number v-model="filters.productId" :min="1" :precision="0" placeholder="产品 ID" />
         <el-input-number v-model="filters.applicantId" :min="1" :precision="0" placeholder="申请人 ID" />
         <el-date-picker v-model="filters.fromDate" type="date" value-format="YYYY-MM-DD" placeholder="开始日期" />
         <el-date-picker v-model="filters.toDate" type="date" value-format="YYYY-MM-DD" placeholder="结束日期" />
         <el-button type="primary" @click="search">查询</el-button>
       </div>
       <el-table v-loading="loading" :data="rows" empty-text="暂无业务单据">
-        <el-table-column prop="orderNo" label="业务编号" min-width="220" />
-        <el-table-column prop="deviceCode" label="设备编号" min-width="140" />
-        <el-table-column prop="productName" label="产品" min-width="140" />
+        <el-table-column prop="orderNo" label="业务编号" min-width="220" show-overflow-tooltip />
+        <el-table-column prop="deviceCode" label="设备编号" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="productName" label="产品" min-width="150" show-overflow-tooltip />
         <el-table-column prop="applicantName" label="申请人" width="110" />
-        <el-table-column label="状态" width="110"><template #default="{ row }"><el-tag>{{ stateNames[row.status] }}</el-tag></template></el-table-column>
+        <el-table-column label="状态" width="110"><template #default="{ row }"><el-tag :type="statusTagType(row.status)">{{ stateNames[row.status] }}</el-tag></template></el-table-column>
         <el-table-column prop="createdAt" label="申请时间" min-width="170" />
         <el-table-column label="操作" min-width="270" fixed="right"><template #default="{ row }">
           <el-button link type="primary" @click="show(row)">详情</el-button>
@@ -173,6 +174,8 @@ onMounted(load)
 
     <el-dialog v-model="detailOpen" :title="titles[kind] + '详情'" width="1000px">
       <template v-if="detail">
+        <div class="service-identity"><div><small>业务编号</small><strong>{{ detail.orderNo }}</strong><span>{{ detail.productName }} · {{ kind === 'exchange' ? '旧设备 ' : '设备 ' }}{{ detail.deviceCode }}</span></div><el-tag :type="statusTagType(detail.status)">{{ stateNames[detail.status] }}</el-tag></div>
+        <h3>业务概况</h3>
         <el-descriptions :column="2" border>
           <el-descriptions-item label="业务编号">{{ detail.orderNo }}</el-descriptions-item><el-descriptions-item label="状态">{{ stateNames[detail.status] }} · v{{ detail.version }}</el-descriptions-item>
           <el-descriptions-item label="设备 / 产品">{{ detail.deviceCode }} · {{ detail.productName }}</el-descriptions-item><el-descriptions-item label="申请人">{{ detail.applicantName }}</el-descriptions-item>
@@ -191,8 +194,8 @@ onMounted(load)
             <el-descriptions-item label="保修快照">{{ detail.warrantyStartAt || '—' }} → {{ detail.warrantyEndAt || '—' }}</el-descriptions-item><el-descriptions-item label="保修识别 / 决策">{{ warrantyNames[detail.warrantyStatus] }} / {{ decisionNames[detail.decision] || '待处理' }}</el-descriptions-item>
             <el-descriptions-item label="关联维修" :span="2">{{ detail.linkedRepairNo || '—' }} · {{ stateNames[detail.linkedRepairStatus] || '' }}</el-descriptions-item>
           </template>
-          <el-descriptions-item v-if="kind === 'exchange'" label="旧 → 新设备" :span="2">{{ detail.deviceCode }} → {{ detail.newDeviceCode }}；{{ detail.reason }}</el-descriptions-item>
         </el-descriptions>
+        <div v-if="kind === 'exchange'" class="exchange-devices"><div><small>原设备</small><strong>{{ detail.deviceCode }}</strong></div><div><small>新设备</small><strong>{{ detail.newDeviceCode || '尚未指定' }}</strong></div></div>
         <h3>库存流水</h3><el-table :data="detail.ledgers" empty-text="无库存变化"><el-table-column prop="businessType" label="业务类型" /><el-table-column prop="direction" label="方向" /><el-table-column prop="quantity" label="数量" /><el-table-column prop="beforeQuantity" label="变动前" /><el-table-column prop="afterQuantity" label="变动后" /></el-table>
         <h3>操作记录</h3><el-table :data="detail.logs"><el-table-column prop="operationType" label="动作" /><el-table-column prop="detail" label="说明" min-width="240" /><el-table-column prop="operatorName" label="操作人" /><el-table-column prop="requestId" label="request_id" /><el-table-column prop="createdAt" label="时间" /></el-table>
         <h3>设备历史</h3><el-table :data="detail.deviceHistory"><el-table-column prop="fromStatus" label="原状态" /><el-table-column prop="toStatus" label="新状态" /><el-table-column prop="businessNo" label="业务编号" min-width="220" /><el-table-column prop="detail" label="说明" min-width="200" /><el-table-column prop="createdAt" label="时间" /></el-table>
@@ -204,9 +207,13 @@ onMounted(load)
 </template>
 
 <style scoped>
-.filter-bar { display: flex; gap: 10px; flex-wrap: wrap; padding: 16px; }
+.page-subtitle { margin: 7px 0 0; color: var(--text-secondary); font-size: 13px; }
 .filter-bar :deep(.el-input), .filter-bar :deep(.el-select) { width: 190px; }
 .el-form :deep(.el-select) { width: 100%; }
 .el-descriptions { white-space: pre-wrap; }
-h3 { margin: 24px 0 12px; color: var(--ink); }
+.service-identity { display: flex; justify-content: space-between; gap: 12px; padding: 17px; background: var(--surface-subtle); border: 1px solid var(--line); border-radius: 8px; }
+.service-identity div { display: grid; gap: 5px; }.service-identity small, .service-identity span { color: var(--text-muted); }.service-identity strong { font-size: 19px; }
+.exchange-devices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.exchange-devices > div { display: grid; gap: 5px; padding: 15px; border: 1px solid var(--line); border-radius: 8px; }
+.exchange-devices small { color: var(--text-muted); }.exchange-devices strong { font-size: 16px; }
 </style>

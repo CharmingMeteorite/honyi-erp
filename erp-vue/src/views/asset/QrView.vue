@@ -154,10 +154,11 @@ onBeforeUnmount(stopCamera)
 
 <template>
   <div class="qr-page" :style="labelStyle">
-    <div class="page-heading screen-only"><h1>二维码与标签</h1></div>
+    <div class="page-heading screen-only"><div><h1>二维码与标签</h1><p>扫描并核对真实业务档案，或按现有尺寸规则预览打印标签。</p></div></div>
     <el-tabs v-model="mode" class="screen-only"><el-tab-pane label="扫码查询" name="scan" /><el-tab-pane label="标签预览" name="labels" /></el-tabs>
 
     <section v-if="mode === 'scan'" class="scan-panel screen-only">
+      <div class="scan-intro"><strong>扫描查询</strong><span>支持二维码内容输入；摄像头识别取决于浏览器权限与支持情况。</span></div>
       <div class="scan-tools">
         <el-input v-model="input" maxlength="256" clearable placeholder="扫描二维码或输入 ERPQR1 内容后回车" @keyup.enter="scan()" />
         <el-button type="primary" :icon="Search" :loading="loading" @click="scan()">查询</el-button>
@@ -198,6 +199,7 @@ onBeforeUnmount(stopCamera)
 
     <section v-if="mode === 'labels'" class="label-workspace">
       <div class="label-controls screen-only">
+        <div class="scan-intro"><strong>标签生成</strong><span>选取现有设备或物资后生成预览；打印内容与尺寸规则保持不变。</span></div>
         <el-segmented v-model="itemType" :options="[{ label: '设备标签', value: 'DEVICE' }, { label: '物资标签', value: 'PRODUCT' }]" @change="changeType" />
         <div class="select-tools"><el-input v-model="keyword" clearable :placeholder="itemType === 'PRODUCT' ? '搜索物资编号' : '搜索设备编号或名称'" @keyup.enter="searchCandidates" /><el-button :icon="Search" @click="searchCandidates">查询</el-button><el-button type="primary" :disabled="!canPrint || !selected.length" :loading="loading" @click="preview">生成预览</el-button></div>
         <el-table :data="candidates" height="220" @selection-change="choose"><el-table-column type="selection" width="48" /><el-table-column :prop="itemType === 'DEVICE' ? 'deviceCode' : 'productCode'" label="编号" /><el-table-column prop="productName" label="名称" /></el-table>
@@ -216,6 +218,10 @@ onBeforeUnmount(stopCamera)
 
 <style>
 .qr-page .scan-panel { max-width: 940px; }
+.qr-page .scan-panel, .qr-page .label-controls { padding: 20px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
+.qr-page .scan-intro { display: grid; gap: 5px; margin-bottom: 16px; }
+.qr-page .scan-intro strong { font-size: 15px; color: var(--text); }
+.qr-page .scan-intro span { color: var(--text-muted); font-size: 12px; }
 .qr-page .scan-tools, .qr-page .select-tools, .qr-page .size-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
 .qr-page .scan-tools .el-input, .qr-page .select-tools .el-input { width: min(440px, 100%); }
 .qr-page .camera { width: min(400px, 100%); aspect-ratio: 4 / 3; object-fit: cover; background: #16252b; }

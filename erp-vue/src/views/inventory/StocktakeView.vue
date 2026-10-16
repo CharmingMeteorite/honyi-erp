@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, View, Edit, Check, Close } from '@element-plus/icons-vue'
 import { api } from '../../lib/api.js'
 import { authState, hasPermission } from '../../lib/auth.js'
+import { statusTagType } from '../../lib/status.js'
 
 const states = { DRAFT: '草稿', COUNTING: '盘点中', COUNTED: '待确认', CONFIRMED: '已确认', CANCELLED: '已取消' }
 const differences = { MATCH: '相符', MISSING: '缺失', EXTRA: '账外', UNREGISTERED: '未登记', WRONG_PRODUCT: '错产品', OUTSIDE_WAREHOUSE: '库外', STATUS_ABNORMAL: '状态异常' }
@@ -101,17 +102,17 @@ onMounted(() => { load(); searchWarehouses() })
 
 <template>
   <div class="stocktake-page">
-    <div class="page-head"><h2>库存盘点</h2><el-button v-if="can('create')" type="primary" :icon="Plus" @click="openEditor()">新建盘点</el-button></div>
+    <div class="page-head"><div><h2>库存盘点</h2><p class="page-subtitle">登记实盘、核对差异并确认库存调整</p></div><el-button v-if="can('create')" type="primary" :icon="Plus" @click="openEditor()">新建盘点</el-button></div>
     <div class="filter-bar">
       <el-input v-model="filters.keyword" clearable placeholder="盘点单号" @keyup.enter="filters.page = 1; load()" />
       <el-select v-model="filters.status" clearable placeholder="全部状态"><el-option v-for="(label, state) in states" :key="state" :label="label" :value="state" /></el-select>
       <el-select v-model="filters.warehouseId" clearable filterable remote :remote-method="searchWarehouses" placeholder="全部仓库"><el-option v-for="w in warehouses" :key="w.id" :label="w.warehouseName" :value="w.id" /></el-select>
-      <el-button :icon="Search" @click="filters.page = 1; load()">查询</el-button><el-button :icon="Refresh" @click="reset">重置</el-button>
+      <el-button type="primary" :icon="Search" @click="filters.page = 1; load()">查询</el-button><el-button :icon="Refresh" @click="reset">重置</el-button>
     </div>
     <el-table v-loading="loading" :data="rows" row-key="id">
       <el-table-column prop="stocktakeNo" label="盘点单号" min-width="280" />
       <el-table-column prop="warehouseName" label="仓库" min-width="130" />
-      <el-table-column label="状态" width="110"><template #default="{ row }"><el-tag :type="row.status === 'CONFIRMED' ? 'success' : row.status === 'CANCELLED' ? 'info' : 'primary'">{{ states[row.status] }}</el-tag></template></el-table-column>
+      <el-table-column label="状态" width="110"><template #default="{ row }"><el-tag :type="statusTagType(row.status)">{{ states[row.status] }}</el-tag></template></el-table-column>
       <el-table-column prop="creatorName" label="制单人" min-width="110" />
       <el-table-column prop="createdAt" label="创建时间" min-width="180" />
       <el-table-column label="操作" min-width="340"><template #default="{ row }">
@@ -188,9 +189,7 @@ onMounted(() => { load(); searchWarehouses() })
 </template>
 
 <style scoped>
-.page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-.page-head h2 { margin: 0; font-size: 22px; }
-.filter-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.page-subtitle { margin: 7px 0 0; color: var(--text-secondary); font-size: 13px; }
 .filter-bar .el-input, .filter-bar .el-select { width: 185px; }
 .wide { width: 100%; }
 .el-pagination { margin-top: 16px; }

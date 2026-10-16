@@ -4,6 +4,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../../lib/api.js'
 import { authState, hasPermission } from '../../lib/auth.js'
+import { statusTagType } from '../../lib/status.js'
 
 const title = '领用申请'
 const states = { DRAFT: '草稿', PENDING_APPROVAL: '待审批', APPROVED: '已批准', REJECTED: '已拒绝', COMPLETED: '已发放', CANCELLED: '已取消' }
@@ -108,7 +109,7 @@ onMounted(() => { load(); searchWarehouses() })
 
 <template>
   <div class="page">
-    <div class="page-head"><h2>{{ title }}</h2><el-button v-if="can('create')" type="primary" @click="open()">新建{{ title }}</el-button></div>
+    <div class="page-head"><div><h2>{{ title }}</h2><p class="page-subtitle">跟踪领用申请、审批和发放记录</p></div><el-button v-if="can('create')" type="primary" @click="open()">新建{{ title }}</el-button></div>
     <el-alert :closable="false" title="领用人为申请人本人。审批不改变库存，仓库发放后才扣减库存；设备转为使用中并归属申请人及其部门。" />
     <div class="filter-bar">
       <el-input v-model="filters.keyword" clearable placeholder="单号" @keyup.enter="filters.page = 1; load()" />
@@ -118,8 +119,8 @@ onMounted(() => { load(); searchWarehouses() })
       <el-button @click="filters.page = 1; load()">查询</el-button><el-button @click="reset">重置</el-button>
     </div>
     <el-table v-loading="loading" :data="rows">
-      <el-table-column prop="orderNo" label="单号" min-width="290" /><el-table-column prop="warehouseName" label="仓库" min-width="120" />
-      <el-table-column label="状态" width="110"><template #default="{ row }"><el-tag :type="row.status === 'COMPLETED' ? 'success' : row.status === 'REJECTED' ? 'danger' : 'info'">{{ states[row.status] }}</el-tag></template></el-table-column>
+      <el-table-column prop="orderNo" label="单号" min-width="250" show-overflow-tooltip /><el-table-column prop="warehouseName" label="仓库" min-width="130" show-overflow-tooltip />
+      <el-table-column label="状态" width="110"><template #default="{ row }"><el-tag :type="statusTagType(row.status)">{{ states[row.status] }}</el-tag></template></el-table-column>
       <el-table-column prop="creatorName" label="申请人" /><el-table-column prop="departmentName" label="领用部门" min-width="100" /><el-table-column prop="createdAt" label="创建时间" min-width="180" />
       <el-table-column label="操作" min-width="330"><template #default="{ row }">
         <el-button link @click="open(row, true)">详情</el-button>
@@ -174,9 +175,7 @@ onMounted(() => { load(); searchWarehouses() })
 </template>
 
 <style scoped>
-.page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.page-head h2 { margin: 0; }
-.filter-bar { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.page-subtitle { margin: 7px 0 0; color: var(--text-secondary); font-size: 13px; }
 .filter-bar .el-input, .filter-bar .el-select { width: 200px; }
 .el-pagination, .el-form { margin-top: 16px; }
 .device-identity { overflow-wrap: anywhere; padding: 4px 0; }

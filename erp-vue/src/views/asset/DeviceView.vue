@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../../lib/api.js'
+import { statusTagType } from '../../lib/status.js'
 import { hasPermission } from '../../lib/auth.js'
 import AttachmentPanel from '../../components/AttachmentPanel.vue'
 
@@ -175,7 +176,7 @@ onMounted(async () => {
 
 <template>
   <div class="page-heading">
-    <div><h1>设备管理</h1><p class="muted">每台设备拥有独立编号。当前仅维护设备资料和基础状态。</p></div>
+    <div><h1>设备管理</h1><p class="muted">按独立设备编号管理资产资料、归属和状态历史。</p></div>
     <div><el-button v-if="hasPermission('asset.qr.print') && selectedDeviceIds.length" @click="openBatchLabels">批量标签</el-button><el-button v-if="hasPermission('system.device.create')" type="primary" @click="openCreate">新增设备</el-button></div>
   </div>
   <el-card>
@@ -187,17 +188,18 @@ onMounted(async () => {
       <el-form-item><el-select v-model="filters.userId" clearable filterable remote :remote-method="searchUsers" placeholder="使用人或保管人"><el-option v-for="x in filterUsers" :key="x.id" :label="personLabel(x)" :value="x.id" /></el-select></el-form-item>
       <el-button type="primary" @click="search">查询</el-button><el-button @click="resetFilters">重置</el-button>
     </el-form>
+    <div class="device-result-heading"><strong>设备列表</strong><span>共 {{ total }} 台 · 当前页 {{ rows.length }} 台</span></div>
     <el-table v-loading="loading" :data="rows" row-key="id" empty-text="当前范围内暂无设备" @selection-change="items => selectedDeviceIds = items.map(item => item.id)">
       <el-table-column v-if="hasPermission('asset.qr.print')" type="selection" width="48" />
-      <el-table-column prop="deviceCode" label="设备编号" min-width="130" />
+      <el-table-column label="设备编号" min-width="165" show-overflow-tooltip><template #default="{ row }"><strong class="device-code">{{ row.deviceCode }}</strong></template></el-table-column>
       <el-table-column prop="productName" label="产品" min-width="160" show-overflow-tooltip />
-      <el-table-column prop="model" label="型号" min-width="100" />
-      <el-table-column prop="serialNumber" label="SN" min-width="130" />
-      <el-table-column prop="macAddress" label="MAC" min-width="165" />
-      <el-table-column prop="assetNo" label="固定资产编号" min-width="130" />
-      <el-table-column prop="departmentName" label="部门" min-width="110" />
-      <el-table-column prop="userName" label="使用人" min-width="100" />
-      <el-table-column label="状态" min-width="100"><template #default="{ row }"><el-tag :type="row.status === 'SCRAPPED' ? 'info' : 'primary'">{{ statusLabel(row.status) }}</el-tag></template></el-table-column>
+      <el-table-column prop="model" label="型号" min-width="110" show-overflow-tooltip />
+      <el-table-column prop="serialNumber" label="SN" min-width="140" show-overflow-tooltip />
+      <el-table-column prop="macAddress" label="MAC" min-width="165" show-overflow-tooltip />
+      <el-table-column prop="assetNo" label="固定资产编号" min-width="150" show-overflow-tooltip />
+      <el-table-column prop="departmentName" label="部门" min-width="120" show-overflow-tooltip />
+      <el-table-column prop="userName" label="使用人" min-width="110" show-overflow-tooltip />
+      <el-table-column label="状态" min-width="100"><template #default="{ row }"><el-tag :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</el-tag></template></el-table-column>
       <el-table-column label="操作" width="220" fixed="right"><template #default="{ row }">
         <el-button link @click="openDetail(row)">详情</el-button>
         <el-button v-if="hasPermission('asset.qr.generate')" link @click="router.push({ path: '/assets/qr', query: { deviceId: row.id } })">二维码</el-button>
@@ -244,10 +246,18 @@ onMounted(async () => {
 
   <el-dialog v-model="detailDialog" title="设备详情" width="850px" class="device-dialog">
     <template v-if="detail">
+      <div class="device-detail-identity"><div><span>设备编号</span><strong>{{ detail.deviceCode }}</strong><small>{{ detail.productName }} · {{ detail.model || '未填写型号' }}</small></div><el-tag :type="statusTagType(detail.status)">{{ statusLabel(detail.status) }}</el-tag></div>
+      <h3>归属与状态</h3>
       <el-descriptions :column="2" border>
         <el-descriptions-item label="仓库归属">{{ detail.warehouseName || '尚未建立仓库库存' }}</el-descriptions-item>
-        <el-descriptions-item label="设备编号">{{ detail.deviceCode }}</el-descriptions-item>
         <el-descriptions-item label="状态">{{ statusLabel(detail.status) }}</el-descriptions-item>
+        <el-descriptions-item label="归属部门">{{ detail.departmentName || '未分配' }}</el-descriptions-item>
+        <el-descriptions-item label="使用人">{{ detail.userName || '未分配' }}</el-descriptions-item>
+        <el-descriptions-item label="保管人">{{ detail.custodianName || '未分配' }}</el-descriptions-item>
+      </el-descriptions>
+      <h3>设备标识与产品</h3>
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="设备编号">{{ detail.deviceCode }}</el-descriptions-item>
         <el-descriptions-item label="产品">{{ detail.productName }}</el-descriptions-item>
         <el-descriptions-item label="品牌">{{ detail.brandName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="型号">{{ detail.model || '-' }}</el-descriptions-item>
@@ -255,9 +265,9 @@ onMounted(async () => {
         <el-descriptions-item label="SN">{{ detail.serialNumber || '-' }}</el-descriptions-item>
         <el-descriptions-item label="MAC">{{ detail.macAddress || '-' }}</el-descriptions-item>
         <el-descriptions-item label="固定资产编号">{{ detail.assetNo || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="归属部门">{{ detail.departmentName || '未分配' }}</el-descriptions-item>
-        <el-descriptions-item label="使用人">{{ detail.userName || '未分配' }}</el-descriptions-item>
-        <el-descriptions-item label="保管人">{{ detail.custodianName || '未分配' }}</el-descriptions-item>
+      </el-descriptions>
+      <h3>日期与备注</h3>
+      <el-descriptions :column="2" border>
         <el-descriptions-item v-for="field in dateFields" :key="field.key" :label="field.label">{{ timeLabel(detail[field.key]) }}</el-descriptions-item>
         <el-descriptions-item label="创建时间">{{ timeLabel(detail.createdAt) }}</el-descriptions-item>
         <el-descriptions-item label="更新时间">{{ timeLabel(detail.updatedAt) }}</el-descriptions-item>
@@ -284,6 +294,11 @@ onMounted(async () => {
 <style scoped>
 .device-filters .el-select { width: 190px; }
 .device-filters .keyword { width: min(390px, 100%); }
+.device-result-heading { display: flex; align-items: baseline; gap: 12px; margin: 18px 0 12px; }
+.device-result-heading strong { font-size: 15px; }.device-result-heading span { color: var(--text-muted); font-size: 12px; }
+.device-code { color: var(--brand-dark); font-weight: 700; }
+.device-detail-identity { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 20px; padding: 17px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-subtle); }
+.device-detail-identity > div { display: grid; gap: 4px; }.device-detail-identity span, .device-detail-identity small { color: var(--text-muted); }.device-detail-identity strong { font-size: 20px; }
 .device-form { margin-top: 16px; }
 .device-form .el-select, .device-form :deep(.el-date-editor) { width: 100%; }
 .multiline { white-space: pre-wrap; overflow-wrap: anywhere; }

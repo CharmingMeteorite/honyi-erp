@@ -1,4 +1,13 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+function responseError(response, payload, prefix = '请求失败') {
+  const requestId = response.headers.get('X-Request-Id')
+  const error = new Error(payload?.message || `${prefix}（${response.status}）`)
+  if (requestId) error.message += ` · request_id: ${requestId}`
+  error.status = response.status
+  error.code = payload?.code
+  error.requestId = requestId
+  return error
+}
 export async function request(path, options = {}) {
   const headers = new Headers(options.headers || {})
   headers.set('Accept', 'application/json')
@@ -11,7 +20,7 @@ export async function request(path, options = {}) {
   if (response.status === 401) window.dispatchEvent(new CustomEvent('erp:unauthorized'))
   if (response.status === 403 && !options.suppressForbiddenRedirect) window.dispatchEvent(new CustomEvent('erp:forbidden'))
   if (!response.ok || (payload && payload.code !== 0)) {
-    const error = new Error(payload?.message || `请求失败（${response.status}）`); error.status = response.status; error.code = payload?.code; throw error
+    throw responseError(response, payload)
   }
   return payload?.data
 }
@@ -26,7 +35,7 @@ export async function downloadReport(type, params = {}) {
   if (!response.ok) {
     let payload = null
     try { payload = await response.json() } catch { payload = null }
-    throw new Error(payload?.message || `导出失败（${response.status}）`)
+    throw responseError(response, payload, '导出失败')
   }
   const objectUrl = URL.createObjectURL(await response.blob())
   const link = document.createElement('a')
@@ -47,7 +56,7 @@ export async function downloadAttachment(id, preview = false) {
   if (!response.ok) {
     let payload = null
     try { payload = await response.json() } catch { payload = null }
-    throw new Error(payload?.message || `下载失败（${response.status}）`)
+    throw responseError(response, payload, '下载失败')
   }
   return response.blob()
 }

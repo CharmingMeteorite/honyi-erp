@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../../lib/api.js'
 import { authState, hasPermission } from '../../lib/auth.js'
+import { statusTagType } from '../../lib/status.js'
 import AttachmentPanel from '../../components/AttachmentPanel.vue'
 
 const props = defineProps({ kind: { type: String, required: true } })
@@ -108,18 +109,18 @@ watch(() => props.kind, () => { visible.value = false; deviceDialog.value = fals
 
 <template>
   <div class="page">
-    <div class="page-head"><h2>{{ title }}</h2><el-button v-if="can('create')" type="primary" @click="open()">新建{{ title }}</el-button></div>
+    <div class="page-head"><div><h2>{{ title }}</h2><p class="page-subtitle">按单据状态管理审批、执行及库存变化</p></div><el-button v-if="can('create')" type="primary" @click="open()">新建{{ title }}</el-button></div>
     <el-alert :closable="false" :title="props.kind === 'inbound' ? '入库设备请先在设备档案中建档，再选择未归属仓库的设备。审批不会改变库存，正式执行才会入库。' : '出库须选择当前仓库的在库设备。审批不会扣减库存，正式执行后设备变为已出库。'" />
     <div class="filter-bar">
       <el-input v-model="filters.keyword" clearable placeholder="单号" @keyup.enter="filters.page = 1; load()" />
       <el-select v-model="filters.status" clearable placeholder="全部状态"><el-option v-for="(name, state) in states" :key="state" :value="state" :label="name" /></el-select>
       <el-select v-model="filters.warehouseId" clearable filterable remote :remote-method="searchWarehouses" placeholder="全部仓库"><el-option v-for="w in warehouses" :key="w.id" :value="w.id" :label="w.warehouseName" /></el-select>
       <el-date-picker v-model="dates" type="daterange" value-format="YYYY-MM-DD" start-placeholder="创建日期起" end-placeholder="创建日期止" />
-      <el-button @click="filters.page = 1; load()">查询</el-button><el-button @click="reset">重置</el-button>
+      <el-button type="primary" @click="filters.page = 1; load()">查询</el-button><el-button @click="reset">重置</el-button>
     </div>
     <el-table v-loading="loading" :data="rows">
-      <el-table-column prop="orderNo" label="单号" min-width="290" /><el-table-column prop="warehouseName" label="仓库" min-width="120" />
-      <el-table-column label="状态" width="110"><template #default="{ row }"><el-tag :type="row.status === 'COMPLETED' ? 'success' : row.status === 'REJECTED' ? 'danger' : 'info'">{{ states[row.status] }}</el-tag></template></el-table-column>
+      <el-table-column prop="orderNo" label="单号" min-width="250" show-overflow-tooltip /><el-table-column prop="warehouseName" label="仓库" min-width="130" show-overflow-tooltip />
+      <el-table-column label="状态" width="110"><template #default="{ row }"><el-tag :type="statusTagType(row.status)">{{ states[row.status] }}</el-tag></template></el-table-column>
       <el-table-column prop="creatorName" label="制单人" /><el-table-column prop="createdAt" label="创建时间" min-width="180" />
       <el-table-column label="操作" min-width="330"><template #default="{ row }">
         <el-button link @click="open(row, true)">详情</el-button>
@@ -173,9 +174,7 @@ watch(() => props.kind, () => { visible.value = false; deviceDialog.value = fals
 </template>
 
 <style scoped>
-.page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.page-head h2 { margin: 0; }
-.filter-bar { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.page-subtitle { margin: 7px 0 0; color: var(--text-secondary); font-size: 13px; }
 .filter-bar .el-input, .filter-bar .el-select { width: 200px; }
 .el-pagination, .el-form { margin-top: 16px; }
 .device-identity { overflow-wrap: anywhere; padding: 4px 0; }

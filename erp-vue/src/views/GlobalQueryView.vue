@@ -5,6 +5,7 @@ import { Search, RefreshRight } from '@element-plus/icons-vue'
 import { api } from '../lib/api.js'
 import { hasPermission } from '../lib/auth.js'
 import { queryTypeNames, queryStatusName } from '../lib/query.js'
+import { statusTagType } from '../lib/status.js'
 
 const router = useRouter()
 const types = [
@@ -48,7 +49,7 @@ function open(row) { router.push({ path: row.route, query: ['PRODUCT', 'DEVICE']
 </script>
 
 <template>
-  <div class="page-heading"><h1>综合查询</h1></div>
+  <div class="page-heading"><div><h1>综合查询</h1><p>跨业务查找当前权限范围内的物资、设备与单据。</p></div></div>
   <div class="query-controls">
     <el-input v-model="filters.keyword" maxlength="100" clearable placeholder="编号、名称、SN、MAC、单号" class="keyword" @keyup.enter="filters.page=1;search()" />
     <el-select v-model="filters.type" clearable placeholder="全部类型" class="type-select" @change="filters.status=''"><el-option v-for="[value, label] in availableTypes" :key="value" :value="value" :label="label" /></el-select>
@@ -58,11 +59,12 @@ function open(row) { router.push({ path: row.route, query: ['PRODUCT', 'DEVICE']
     <el-button :icon="RefreshRight" @click="reset">重置</el-button>
   </div>
   <el-alert v-if="error" :title="error" type="error" show-icon class="query-error" />
+  <div class="query-result-heading"><strong>查询结果</strong><span>{{ searched ? `共 ${total} 条记录` : '输入条件后查询' }}</span></div>
   <el-table v-loading="loading" :data="rows" empty-text="暂无结果" class="results">
     <el-table-column label="类型" width="100"><template #default="{ row }"><el-tag effect="plain">{{ queryTypeNames[row.type] || row.type }}</el-tag></template></el-table-column>
-    <el-table-column prop="title" label="编号 / 单号" min-width="220" />
+    <el-table-column prop="title" label="编号 / 单号" min-width="220" show-overflow-tooltip />
     <el-table-column prop="subtitle" label="信息" min-width="210" show-overflow-tooltip />
-    <el-table-column label="状态" width="130"><template #default="{ row }">{{ queryStatusName(row.type, row.status) }}</template></el-table-column>
+    <el-table-column label="状态" width="130"><template #default="{ row }"><el-tag size="small" :type="statusTagType(row.status)" effect="plain">{{ queryStatusName(row.type, row.status) }}</el-tag></template></el-table-column>
     <el-table-column prop="createdAt" label="创建时间" width="175" />
     <el-table-column label="入口" width="90"><template #default="{ row }"><el-button link type="primary" @click="open(row)">查看</el-button></template></el-table-column>
   </el-table>
@@ -70,7 +72,10 @@ function open(row) { router.push({ path: row.route, query: ['PRODUCT', 'DEVICE']
 </template>
 
 <style scoped>
-.query-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 18px; }
 .keyword { width: min(300px, 100%); }.type-select { width: 140px; }.status-input { width: 130px; }.date-range { width: 250px; }
-.query-error { margin-bottom: 16px; }.results { width: 100%; }.query-pagination { margin-top: 16px; justify-content: flex-end; }
+.query-result-heading { display: flex; align-items: baseline; gap: 12px; margin: 20px 0 12px; }
+.query-result-heading strong { font-size: 15px; }
+.query-result-heading span { color: var(--text-muted); font-size: 12px; }
+.query-pagination { justify-content: flex-end; }
+@media (max-width: 760px) { .keyword, .type-select, .status-input, .date-range { width: 100%; } }
 </style>

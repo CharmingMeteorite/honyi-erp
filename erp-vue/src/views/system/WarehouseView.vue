@@ -36,7 +36,7 @@ onMounted(load)
 </script>
 <template>
   <div class="page">
-    <div class="page-head"><h2>仓库管理</h2><el-button v-if="hasPermission('system.warehouse.create') && authState.user?.dataScope !== 'SELF'" type="primary" @click="open()">新增仓库</el-button></div>
+    <div class="page-head"><div><h2>仓库管理</h2><p class="page-subtitle">维护仓库编码、所属部门与启用状态</p></div><el-button v-if="hasPermission('system.warehouse.create') && authState.user?.dataScope !== 'SELF'" type="primary" @click="open()">新增仓库</el-button></div>
     <div class="filter-bar"><el-input v-model="filters.keyword" placeholder="编码 / 名称" clearable @keyup.enter="filters.page = 1; load()" /><el-select v-model="filters.status" placeholder="全部状态" clearable><el-option label="启用" :value="true" /><el-option label="停用" :value="false" /></el-select><el-button @click="filters.page = 1; load()">查询</el-button><el-button @click="Object.assign(filters, { keyword: '', status: null, page: 1 }); load()">重置</el-button></div>
     <el-table v-loading="loading" :data="rows"><el-table-column prop="warehouseCode" label="编码" /><el-table-column prop="warehouseName" label="名称" /><el-table-column label="所属部门"><template #default="{ row }">{{ row.departmentName || '全局' }}</template></el-table-column><el-table-column label="状态"><template #default="{ row }"><el-tag :type="row.status ? 'success' : 'info'">{{ row.status ? '启用' : '停用' }}</el-tag></template></el-table-column><el-table-column prop="remark" label="备注" show-overflow-tooltip /><el-table-column label="操作"><template #default="{ row }"><el-button v-if="hasPermission('system.warehouse.update')" link @click="open(row)">编辑</el-button><el-button v-if="hasPermission('system.warehouse.disable')" link @click="changeStatus(row)">{{ row.status ? '停用' : '启用' }}</el-button></template></el-table-column></el-table>
     <el-pagination v-model:current-page="filters.page" :page-size="filters.size" :total="total" layout="total, prev, pager, next" @current-change="load" />
@@ -48,9 +48,7 @@ onMounted(load)
 </template>
 
 <style scoped>
-.page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.page-head h2 { margin: 0; }
-.filter-bar { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.page-subtitle { margin: 7px 0 0; color: var(--text-secondary); font-size: 13px; }
 .filter-bar .el-input, .filter-bar .el-select { width: 220px; }
 .el-pagination { margin-top: 16px; }
 </style>

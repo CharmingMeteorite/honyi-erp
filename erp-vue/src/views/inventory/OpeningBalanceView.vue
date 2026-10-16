@@ -76,7 +76,7 @@ onMounted(() => { load(); searchWarehouses() })
 </script>
 <template>
   <div class="page">
-    <div class="page-head"><h2>期初库存</h2><el-button v-if="canWrite" type="primary" @click="open()">新增期初单</el-button></div>
+    <div class="page-head"><div><h2>期初库存</h2><p class="page-subtitle">创建和确认仓库初始库存，完成后记录库存流水</p></div><el-button v-if="canWrite" type="primary" @click="open()">新增期初单</el-button></div>
     <el-alert title="用于登记系统启用时的已有库存。数量型物资填写数量，设备型物资选择具体设备。请核对已有期初单，避免把同一批数量型库存录入不同单据。" :closable="false" />
     <div class="filter-bar"><el-select v-model="filters.warehouseId" filterable remote :remote-method="searchWarehouses" clearable placeholder="全部仓库"><el-option v-for="w in warehouses" :key="w.id" :value="w.id" :label="w.warehouseName" /></el-select><el-select v-model="filters.status" clearable placeholder="全部状态"><el-option value="DRAFT" label="待完成" /><el-option value="COMPLETED" label="已完成" /></el-select><el-button @click="filters.page = 1; load()">查询</el-button><el-button @click="Object.assign(filters, { warehouseId: null, status: '', page: 1 }); load()">重置</el-button></div>
     <el-table v-loading="loading" :data="rows"><el-table-column prop="openingNo" label="期初单号" min-width="280" /><el-table-column prop="warehouseName" label="仓库" /><el-table-column label="状态"><template #default="{ row }"><el-tag :type="row.status === 'COMPLETED' ? 'success' : 'warning'">{{ row.status === 'COMPLETED' ? '已完成' : '待完成' }}</el-tag></template></el-table-column><el-table-column prop="createdAt" label="创建时间" min-width="180" /><el-table-column prop="completedAt" label="完成时间" min-width="180" /><el-table-column label="操作" min-width="190"><template #default="{ row }"><el-button link @click="open(row, true)">详情</el-button><template v-if="row.status === 'DRAFT' && canWrite"><el-button link @click="open(row)">编辑</el-button><el-button type="primary" link :disabled="completingId !== null" :loading="completingId === row.id" @click="complete(row)">完成</el-button></template></template></el-table-column></el-table>
@@ -98,9 +98,7 @@ onMounted(() => { load(); searchWarehouses() })
 </template>
 
 <style scoped>
-.page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.page-head h2 { margin: 0; }
-.filter-bar { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.page-subtitle { margin: 7px 0 0; color: var(--text-secondary); font-size: 13px; }
 .filter-bar .el-input, .filter-bar .el-select { width: 220px; }
 .el-pagination { margin-top: 16px; }
 </style>

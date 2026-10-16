@@ -108,3 +108,7 @@ docs/      编码规范、参考索引和数据库蓝图
 ## Phase 10C 附件与站内通知
 
 `/api/attachments` 提供业务附件上传、列表、授权下载及删除；对象放在私有 MinIO bucket，元数据放在 MySQL。设备、物资、入出库、领用、盘点、维修、保修、换货现有页面的适当入口展示附件。`/notifications` 提供登录用户自己的持久化通知、未读数和已读操作；入出库完成、领用发放，以及维修/保修/换货处理结果会触发通知。V18 新增附件与通知表和权限。接口与限制见 [docs/attachment-management.md](docs/attachment-management.md)、[docs/notification-management.md](docs/notification-management.md)。
+
+## UI 专项升级
+
+前端采用浅色企业工作台布局，菜单按当前权限分组；仪表盘仅展示 `/api/dashboard/summary` 的真实指标，列表、状态、筛选、详情和表单使用统一设计 Token。设计规则见 [docs/ui-design-system.md](docs/ui-design-system.md)，本轮实际构建和浏览器检查见 [docs/ui-redesign-verification.md](docs/ui-redesign-verification.md)。前端仍由现有单 JAR 提供，按 [docs/deployment-guide.md](docs/deployment-guide.md) 手动构建和部署；本轮未修改后端业务或数据库 Migration。
