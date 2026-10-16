@@ -35,4 +35,8 @@
 
 部署前将原 JAR 和原 1Panel `.env` 分别备份至 `/home/hongyi/erp-deploy-backups/erp.jar.20261016-102321`、`/home/hongyi/erp-deploy-backups/erp-env.20261016-102321`，通过字节比较确认备份与原文件一致。原版本本就启动失败，因此这两份备份只用于恢复原状态，不代表可用的运行版本。上传 `48f778259aba` 构建的 JAR 后，在宿主机和容器内核对 SHA-256 均为 `909A3B9C05CA5C6C827D5F5A2FA67F7D0E8F72F3CFCDAE3F6FFA8626D4789B13`；配置文件放于 `/home/hongyi/erp/config/application.properties`，目录/文件权限分别为 700/600。仅修改 1Panel ERP 的 `EXEC_SCRIPT`，显式指定外部配置文件和 `prod` profile。配置文件内容及凭据未进入 Git、JAR 或验证日志。
 
-启动现有 `erp` 容器后状态为 running、退出码 0、无重启。容器日志显示 `prod` profile、18 项 Flyway Migration 校验成功、schema 当前 V18、Tomcat 监听容器 8080。从宿主机访问 `127.0.0.1:8090/health/ready` 返回 200，database 和 objectStorage 均为 UP。从工作机访问 `192.168.1.247:8090`：首页、设备与报表深层路由、JS、CSS 均返回 200；`/health/live` 和 `/health/ready` 返回 200；未登录的 `/api/auth/me` 返回 401，未知 API 返回 404。没有执行真实用户登录、浏览器 E2E、业务写入或数据库/对象恢复演练；未修改业务数据或对象。
+启动现有 `erp` 容器后状态为 running、退出码 0、无重启。容器日志显示 `prod` profile、18 项 Flyway Migration 校验成功、schema 当前 V18、Tomcat 监听容器 8080。从宿主机访问 `127.0.0.1:8090/health/ready` 返回 200，database 和 objectStorage 均为 UP。从工作机访问 `192.168.1.247:8090`：首页、设备与报表深层路由、JS、CSS 均返回 200；`/health/live` 和 `/health/ready` 返回 200；未登录的 `/api/auth/me` 返回 401，未知 API 返回 404。浏览器 E2E、业务写入或数据库/对象恢复演练未执行；未修改既有业务数据或对象。
+
+## 2026-10-16 首个 ERP 管理员初始化
+
+用户明确指定 ERP 管理员账号及密码。初始化前只读检查确认 `sys_user` 中没有该账号，`SYSTEM_ADMIN` 角色启用且有关联权限。通过现有 `SeedConfig`/`AuthService.seedAdmin` 在本机 Java 17 临时进程中对指定开发库执行一次性初始化；临时进程只监听 `127.0.0.1`，管理员密码仅在本次初始化和验证进程中使用，没有写入 JAR、Git、1Panel 启动配置或日志。数据库确认新账号启用、密码为 BCrypt 哈希且关联 `SYSTEM_ADMIN`。通过 SSH 隧道连接已部署服务的 `127.0.0.1:8090`，实际验证登录、角色和 `/api/auth/me` 均成功，并注销测试 Token；随后确认该用户无残留访问 Token，临时进程和隧道均已停止。用户指定的明文密码不记录在本文档中。服务仍为 UP，MySQL/MinIO 就绪检查通过。
